@@ -2,6 +2,7 @@ from base import BaseModel
 import torch
 import torch.nn as nn
 from models import resnet
+import torchvision.models as models
 import torch.nn.functional as F
 from itertools import chain
 
@@ -210,3 +211,71 @@ class ResUnet(BaseModel):
         for module in self.modules():
             if isinstance(module, nn.BatchNorm2d): module.eval()
 
+class MUnet(BaseModel):
+    def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
+        super(MUnet, self).__init__()
+        model = models.mobilenet_v2(pretrained=True)
+
+        self.down1 = nn.Sequential(model.features[0],
+                                    model.features[1]) # 16 - 128
+        self.down2 = nn.Sequential(model.features[2],
+                                    model.features[3]) # 24 - 64
+        self.down3 = nn.Sequential(model.features[4],
+                                    model.features[5],
+                                    model.features[6]) # 32 - 32
+        self.down4 = nn.Sequential(model.features[7],
+                                    model.features[8],
+                                    model.features[9],
+                                    model.features[10],
+                                    model.features[11],
+                                    model.features[12],
+                                    model.features[13]) # 96 - 16
+        self.down5 = nn.Sequential(model.features[14],
+                                    model.features[15],
+                                    model.features[16],
+                                    model.features[17]) # 320 - 8
+        self.middle_conv = nn.Sequential(
+            nn.MaxPool2d(2, 2),
+            DecoderRes(320, 96)
+        )
+        self.up1 = DecoderRes(96+320, 160)
+        self.up2 = DecoderRes(160+96, 96)
+        self.up3 = DecoderRes(96+32, 32)
+        self.up4 = DecoderRes(32+24, 24)
+        self.up5 = DecoderRes(24+16, 16)
+        # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(16+24+32+96+160, 64, kernel_size=1, padding=0),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+
+    def forward(self, x):
+        x1 = self.down1(x)
+        x2 = self.down2(x1)
+        x3 = self.down3(x2)
+        x4 = self.down4(x3)
+        x5 = self.down5(x4)
+        c = self.middle_conv(x5)
+        d5 = self.up1(x5, c)
+        d4 = self.up2(x4, d5)
+        d3 = self.up3(x3, d4)
+        d2 = self.up4(x2, d3)
+        d1 = self.up5(x1, d2)
+
+        u5 = F.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
+        u4 = F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False)
+        u3 = F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False)
+        u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
+        d = torch.cat((d1, u2, u3, u4, u5), 1)
+        x = self.final_conv(d)
+        return x
+
+    def get_backbone_params(self):
+        # There is no backbone for unet, all the parameters are trained from scratch
+        return []
+
+    def get_decoder_params(self):
+        return self.parameters()

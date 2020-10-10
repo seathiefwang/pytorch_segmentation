@@ -1,10 +1,10 @@
 {
-    "name": "ResUnet",
+    "name": "MUnet",
     "n_gpu": 2,
     "use_synch_bn": true,
 
     "arch": {
-        "type": "ResUnet",
+        "type": "MUnet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,
@@ -15,7 +15,7 @@
     "train_loader": {
         "type": "RIS",
         "args":{
-            "data_dir": "/mnt/data/DeepLearning/bisai/datafountain",
+            "data_dir": "/home/mumu/src/rsi",
             "batch_size": 16,
             "base_size": 256,
             "crop_size": 256,
@@ -33,7 +33,7 @@
     "val_loader": {
         "type": "RIS",
         "args":{
-            "data_dir": "/mnt/data/DeepLearning/bisai/datafountain",
+            "data_dir": "/home/mumu/src/rsi",
             "batch_size": 8,
             "crop_size": 256,
             "val": true,
@@ -43,10 +43,12 @@
     },
 
     "optimizer": {
-        "type": "Adam",
+        "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.001
+            "lr": 0.01,
+            "weight_decay": 1e-4,
+            "momentum": 0.9
         }
     },
 
@@ -55,7 +57,8 @@
     "lr_scheduler": {
         "type": "CosineWithRestarts",
         "args": {
-            "t_max": 10
+            "t_max": 10,
+            "eta_min": 1e-5
         }
     },
 

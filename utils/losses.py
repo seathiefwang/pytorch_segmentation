@@ -50,16 +50,17 @@ class DiceLoss(nn.Module):
         return loss
 
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, alpha=None, ignore_index=255, size_average=True):
+    def __init__(self, gamma=2, alpha=0.5, weight=None, ignore_index=255, size_average=True):
         super(FocalLoss, self).__init__()
+        self.alpha = alpha
         self.gamma = gamma
         self.size_average = size_average
-        self.CE_loss = nn.CrossEntropyLoss(reduce=False, ignore_index=ignore_index, weight=alpha)
+        self.CE_loss = nn.CrossEntropyLoss(reduce=False, ignore_index=ignore_index, weight=weight)
 
     def forward(self, output, target):
         logpt = self.CE_loss(output, target)
         pt = torch.exp(-logpt)
-        loss = ((1-pt)**self.gamma) * logpt
+        loss = ((1-pt)**self.gamma) * self.alpha * logpt
         if self.size_average:
             return loss.mean()
         return loss.sum()
