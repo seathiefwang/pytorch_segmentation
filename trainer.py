@@ -36,6 +36,8 @@ class Trainer(BaseTrainer):
 
     def _train_epoch(self, epoch):
         self.logger.info('\n')
+        self.logger.info(f'Epoch: {epoch}')
+        self.logger.info(f'Learning rate: {self.optimizer.param_groups[0]["lr"]}')
             
         self.model.train()
         if self.config['arch']['args']['freeze_bn']:
@@ -104,7 +106,7 @@ class Trainer(BaseTrainer):
         log = {'loss': self.total_loss.average,
                 **seg_metrics}
 
-        if self.lr_scheduler is not None: self.lr_scheduler.step()
+        if self.lr_scheduler is not None: self.lr_scheduler.step(epoch-1)
         return log
 
     def _valid_epoch(self, epoch):

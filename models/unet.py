@@ -68,7 +68,7 @@ class DecoderRes(nn.Module):
         self.block2 = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
         )
 
     def forward(self, *args):
@@ -230,22 +230,20 @@ class MUnet(BaseModel):
                                     model.features[11],
                                     model.features[12],
                                     model.features[13]) # 96 - 16
-        self.down5 = nn.Sequential(model.features[14],
-                                    model.features[15],
-                                    model.features[16],
-                                    model.features[17]) # 320 - 8
         self.middle_conv = nn.Sequential(
-            nn.MaxPool2d(2, 2),
-            DecoderRes(320, 96)
+            model.features[14],
+            model.features[15],
+            model.features[16],
+            model.features[17], # 320 - 8
+            DecoderRes(320, 160)
         )
-        self.up1 = DecoderRes(96+320, 160)
-        self.up2 = DecoderRes(160+96, 96)
-        self.up3 = DecoderRes(96+32, 32)
-        self.up4 = DecoderRes(32+24, 24)
-        self.up5 = DecoderRes(24+16, 16)
+        self.up1 = DecoderRes(160+96, 96)
+        self.up2 = DecoderRes(96+32, 32)
+        self.up3 = DecoderRes(32+24, 24)
+        self.up4 = DecoderRes(24+16, 16)
         # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
         self.final_conv = nn.Sequential(
-            nn.Conv2d(16+24+32+96+160, 64, kernel_size=1, padding=0),
+            nn.Conv2d(16+24+32+96, 64, kernel_size=1, padding=0),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, num_classes, kernel_size=1)
@@ -257,19 +255,16 @@ class MUnet(BaseModel):
         x2 = self.down2(x1)
         x3 = self.down3(x2)
         x4 = self.down4(x3)
-        x5 = self.down5(x4)
-        c = self.middle_conv(x5)
-        d5 = self.up1(x5, c)
-        d4 = self.up2(x4, d5)
-        d3 = self.up3(x3, d4)
-        d2 = self.up4(x2, d3)
-        d1 = self.up5(x1, d2)
+        c = self.middle_conv(x4)
+        d4 = self.up1(x4, c)
+        d3 = self.up2(x3, d4)
+        d2 = self.up3(x2, d3)
+        d1 = self.up4(x1, d2)
 
-        u5 = F.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
         u4 = F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False)
         u3 = F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False)
         u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
-        d = torch.cat((d1, u2, u3, u4, u5), 1)
+        d = torch.cat((d1, u2, u3, u4), 1)
         x = self.final_conv(d)
         return x
 

@@ -13,10 +13,10 @@
     },
 
     "train_loader": {
-        "type": "RIS",
+        "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 16,
+            "batch_size": 32,
             "base_size": 256,
             "crop_size": 256,
             "augment": true,
@@ -25,13 +25,13 @@
             "flip": true,
             "rotate": true,
             "blur": false,
-            "split": "train",
+            "split": "train_all",
             "num_workers": 8
         }
     },
 
     "val_loader": {
-        "type": "RIS",
+        "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
             "batch_size": 8,
@@ -52,13 +52,14 @@
         }
     },
 
-    "loss": "FocalLoss",
+    "loss": "LovaszSoftmax",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
         "args": {
             "t_max": 10,
-            "eta_min": 1e-5
+            "eta_min": 1e-5,
+            "factor": 1
         }
     },
 

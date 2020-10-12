@@ -9,12 +9,12 @@ import cv2
 from torch.utils.data import Dataset
 from torchvision import transforms
 
-class RISDataset(BaseDataSet):
+class RSIDataset(BaseDataSet):
 
     def __init__(self, **kwargs):
         self.num_classes = 8
         self.palette = palette.get_voc_palette(self.num_classes)
-        super(RISDataset, self).__init__(**kwargs)
+        super(RSIDataset, self).__init__(**kwargs)
 
     def _set_files(self):
         self.root = os.path.join(self.root, 'train')
@@ -49,12 +49,12 @@ class RISDataset(BaseDataSet):
         # image_id = self.files[index].split("/")[-1].split(".")[0]
         return image, label, image_id
 
-class RISFastDataset(BaseDataSet):
+class RSIFastDataset(BaseDataSet):
 
     def __init__(self, **kwargs):
         self.num_classes = 8
         self.palette = palette.get_voc_palette(self.num_classes)
-        super(RISFastDataset, self).__init__(**kwargs)
+        super(RSIFastDataset, self).__init__(**kwargs)
 
     def _set_files(self):
         self.root = os.path.join(self.root, 'train')
@@ -98,7 +98,7 @@ class RISFastDataset(BaseDataSet):
         label = self.labels[index]
         return image, label, image_id
 
-class RIS(BaseDataLoader):
+class RSI(BaseDataLoader):
     def __init__(self, data_dir, batch_size, split, crop_size=None, base_size=None, scale=True, num_workers=1, val=False,
                     shuffle=False, flip=False, rotate=False, blur= False, augment=False, val_split= None, return_id=False):
         
@@ -122,9 +122,9 @@ class RIS(BaseDataLoader):
         }
     
         if split in ["train_fast", "trainval_fast", "val_fast", "test_fast"]:
-            self.dataset = RISFastDataset(**kwargs)
-        elif split in ["train", "trainval", "val", "test"]:
-            self.dataset = RISDataset(**kwargs)
+            self.dataset = RSIFastDataset(**kwargs)
+        elif split in ["train", "train_all", "val", "test"]:
+            self.dataset = RSIDataset(**kwargs)
         else: raise ValueError(f"Invalid split name {split}")
-        super(RIS, self).__init__(self.dataset, batch_size, shuffle, num_workers, val_split)
+        super(RSI, self).__init__(self.dataset, batch_size, shuffle, num_workers, val_split)
 

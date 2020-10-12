@@ -2,4 +2,4 @@ from .coco import COCO
 from .voc import VOC
 from .ade20k import ADE20K
 from .cityscapes import CityScapes
-from .ris import RIS
+from .rsi import RSI

@@ -32,9 +32,9 @@ class BaseDataSet(Dataset):
 
         if not self.val:
             self.affine_augmenter = albu.Compose([
-                            albu.Flip(p=0.5),
-                            albu.RandomRotate90(p=0.5),
-                            albu.Rotate(limit=20, value=0, mask_value=0, p=0.1)
+                            albu.Flip(p=0.2),
+                            albu.RandomRotate90(p=0.2),
+                            albu.Rotate(limit=30, value=0, mask_value=255, p=0.01)
                             ])
 
             self.image_augmenter = albu.Compose([
@@ -55,14 +55,14 @@ class BaseDataSet(Dataset):
                             #     albu.RandomGamma(),
                             #     ], p=0.1),
                             albu.HueSaturationValue(hue_shift_limit=0, sat_shift_limit=10, val_shift_limit=20,p=0.05),
-                            albu.JpegCompression(90, 100, p=0.01)
+                            # albu.JpegCompression(90, 100, p=0.01)
                             ])
 
             self.resizer = albu.Compose([
                             albu.Resize(base_size, base_size, p=1),
                             albu.RandomScale(scale_limit=(-0.15, 0.15), p=1),
                             albu.PadIfNeeded(min_height=crop_size, min_width=crop_size,
-                                            value=0, mask_value=0, p=1),
+                                            value=0, mask_value=255, p=1),
                             albu.RandomCrop(height=crop_size, width=crop_size, p=1)
                             ])
         else:

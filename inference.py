@@ -17,6 +17,8 @@ import models
 from utils.helpers import colorize_mask
 from collections import OrderedDict
 
+matches = [800, 100, 200, 300, 400, 500, 600, 700]
+
 def pad_image(img, target_size):
     rows_to_pad = max(target_size[0] - img.shape[2], 0)
     cols_to_pad = max(target_size[1] - img.shape[3], 0)
@@ -79,12 +81,36 @@ def multi_scale_predict(model, image, scales, num_classes, device, flip=False):
     return total_predictions
 
 
-def save_images(image, mask, output_path, image_file, palette):
+def multi_flip_predict(model, image, num_classes, device):
+    flips = [-1, -2, 1, 2, 3]
+    total_predictions = np.zeros((num_classes, image.size(2), image.size(3)))
+
+    prediction = model(image.to(device))
+    total_predictions += prediction.data.cpu().numpy().squeeze(0)
+
+    for fp in flips:
+        if fp > 0:
+            fliped_image = image.rot90(fp, (2, 3))
+        else:
+            fliped_image = image.flip(fp)
+
+        fliped_predictions = model(fliped_image)
+        if fp > 0:
+            fliped_predictions = fliped_predictions.rot90(-fp, (2, 3))
+        else:
+            fliped_predictions = fliped_predictions.flip(-1)
+        total_predictions += fliped_predictions.data.cpu().numpy().squeeze(0)
+
+    total_predictions /= len(flips)+1
+    return total_predictions
+
+
+def save_images(image, mask, output_path, image_file, num_classes):
 	# Saves the image, the model output and the results after the post processing
-    w, h = image.size
-    image_file = os.path.basename(image_file).split('.')[0]
-    colorized_mask = colorize_mask(mask, palette)
-    colorized_mask.save(os.path.join(output_path, image_file+'.png'))
+    # w, h = image.size
+    # image_file = os.path.basename(image_file).split('.')[0]
+    # colorized_mask = colorize_mask(mask, palette)
+    # colorized_mask.save(os.path.join(output_path, image_file+'.png'))
     # output_im = Image.new('RGB', (w*2, h))
     # output_im.paste(image, (0,0))
     # output_im.paste(colorized_mask, (w,0))
@@ -92,17 +118,25 @@ def save_images(image, mask, output_path, image_file, palette):
     # mask_img = Image.fromarray(mask, 'L')
     # mask_img.save(os.path.join(output_path, image_file+'.png'))
 
+    h, w = mask.shape
+    save_mask = np.zeros((w, h), dtype=np.int32)
+    for i in range(num_classes):
+        save_mask[mask == i] = matches[i]
+    save_mask = Image.fromarray(save_mask)
+    image_file = os.path.basename(image_file).split('.')[0]
+    save_mask.save(os.path.join(output_path, image_file+'.png'))
+
 def main():
     args = parse_arguments()
     config = json.load(open(args.config))
 
     # Dataset used for training the model
     dataset_type = config['train_loader']['type']
-    assert dataset_type in ['VOC', 'COCO', 'CityScapes', 'ADE20K']
+    assert dataset_type in ['VOC', 'COCO', 'CityScapes', 'ADE20K', 'RSI']
     if dataset_type == 'CityScapes': 
         scales = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25] 
     else:
-        scales = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+        scales = [0.75, 1.0, 1.25, 1.5]
     loader = getattr(dataloaders, config['train_loader']['type'])(**config['train_loader']['args'])
     to_tensor = transforms.ToTensor()
     normalize = transforms.Normalize(loader.MEAN, loader.STD)
@@ -149,25 +183,27 @@ def main():
                 prediction = multi_scale_predict(model, input, scales, num_classes, device)
             elif args.mode == 'sliding':
                 prediction = sliding_predict(model, input, num_classes)
+            elif args.mode == 'multiflip':
+                prediction = multi_flip_predict(model, input, num_classes, device)
             else:
                 prediction = model(input.to(device))
                 prediction = prediction.squeeze(0).cpu().numpy()
             prediction = F.softmax(torch.from_numpy(prediction), dim=0).argmax(0).cpu().numpy()
-            save_images(image, prediction, args.output, img_file, palette)
+            save_images(image, prediction, args.output, img_file, num_classes)
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Inference')
     parser.add_argument('-c', '--config', default='VOC',type=str,
                         help='The config used to train the model')
-    parser.add_argument('-mo', '--mode', default='multiscale', type=str,
-                        help='Mode used for prediction: either [multiscale, sliding]')
+    parser.add_argument('-mo', '--mode', default='multiflip', type=str,
+                        help='Mode used for prediction: either [multiflip, multiscale, sliding]')
     parser.add_argument('-m', '--model', default='model_weights.pth', type=str,
                         help='Path to the .pth model checkpoint to be used in the prediction')
     parser.add_argument('-i', '--images', default=None, type=str,
                         help='Path to the images to be segmented')
     parser.add_argument('-o', '--output', default='outputs', type=str,  
                         help='Output Path')
-    parser.add_argument('-e', '--extension', default='jpg', type=str,
+    parser.add_argument('-e', '--extension', default='tif', type=str,
                         help='The extension of the images to be segmented')
     args = parser.parse_args()
     return args
