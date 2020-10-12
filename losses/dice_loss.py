@@ -2,6 +2,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor, einsum
 from .focal_loss import FocalLoss
 
 def make_one_hot(labels, classes):
@@ -74,12 +75,12 @@ class FocalDiceLoss(nn.Module):
         return self.focal_weight * focal_loss + self.dice_weight * dice_loss
 
 class CE_DiceLoss(nn.Module):
-    def __init__(self, dice_weight=0.2, ce_weight=0.8, ignore_index=255, weight=None):
+    def __init__(self, dice_weight=0.2, ce_weight=0.8, ignore_index=255):
         super(CE_DiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
         self.dice = DiceLoss()
-        self.cross_entropy = nn.CrossEntropyLoss(weight=weight, reduction=reduction, ignore_index=ignore_index)
+        self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
     
     def forward(self, output, target):
         CE_loss = self.cross_entropy(output, target)
