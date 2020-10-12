@@ -52,7 +52,7 @@
         }
     },
 
-    "loss": "FocalDiceLoss",
+    "loss": "CE_LovaszLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",

@@ -47,10 +47,13 @@ class GeneralizedDiceLoss(nn.Module):
         self.eps = eps
         self.ignore_index = ignore_index
 
-    def forward(self, preds, labels):        
+    def forward(self, preds, labels):
+        classes = preds.size()[1]
         if self.ignore_index not in range(labels.min(), labels.max()):
             if (labels == self.ignore_index).sum() > 0:
                 labels[labels == self.ignore_index] = labels.min()
+
+        labels = make_one_hot(labels.unsqueeze(dim=1), classes=classes)
 
         pc = preds.type(torch.float32)
         tc = labels.type(torch.float32)
@@ -66,7 +69,7 @@ class GeneralizedDiceLoss(nn.Module):
         return loss
 
 class FocalDiceLoss(nn.Module):
-    def __init__(self, dice_weight=0.2, focal_weight=0.8, ignore_index=255):
+    def __init__(self, dice_weight=0.5, focal_weight=0.5, ignore_index=255):
         super(FocalDiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.focal_weight = focal_weight
@@ -76,10 +79,11 @@ class FocalDiceLoss(nn.Module):
     def forward(self, output, target):
         focal_loss = self.focal(output, target)
         dice_loss = self.dice(output, target)
+        # print("focal dice :", focal_loss.item(), dice_loss.item())
         return self.focal_weight * focal_loss + self.dice_weight * dice_loss
 
 class CE_DiceLoss(nn.Module):
-    def __init__(self, dice_weight=0.2, ce_weight=0.8, ignore_index=255):
+    def __init__(self, dice_weight=0.5, ce_weight=0.5, ignore_index=255):
         super(CE_DiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
@@ -89,4 +93,22 @@ class CE_DiceLoss(nn.Module):
     def forward(self, output, target):
         CE_loss = self.cross_entropy(output, target)
         dice_loss = self.dice(output, target)
+        # print("ce dice :", CE_loss.item(), dice_loss.item())
         return self.ce_weight * CE_loss + self.dice_weight * dice_loss
+
+
+class ExDiceLoss(nn.Module):
+    def __init__(self, smooth=0, gamma=1, eps=1e-10, ignore_index=255):
+        super().__init__()
+        self.gamma = gamma
+        self.dice = DiceLoss(smooth=0, eps=1e-10, ignore_index=255)
+
+    def forward(self, output, target):
+        dice_score = self.dice(output, target)
+        logarithmic_exp = (-1 * torch.log(dice_score)) ** self.gamma
+        per_class_ds = logarithmic_exp.mean()
+        return per_class_ds
+
+
+
+
