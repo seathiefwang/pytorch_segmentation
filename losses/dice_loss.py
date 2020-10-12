@@ -48,10 +48,9 @@ class GeneralizedDiceLoss(nn.Module):
         self.ignore_index = ignore_index
 
     def forward(self, preds, labels):        
-        if self.ignore_index is not None:
-            mask = labels != self.ignore_index
-            labels = labels[mask]
-            preds = preds[mask.unsqueeze(1).expand(-1, preds.size(1), -1, -1)]
+        if self.ignore_index not in range(labels.min(), labels.max()):
+            if (labels == self.ignore_index).sum() > 0:
+                labels[labels == self.ignore_index] = labels.min()
 
         pc = preds.type(torch.float32)
         tc = labels.type(torch.float32)
