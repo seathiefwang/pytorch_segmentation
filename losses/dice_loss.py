@@ -5,9 +5,11 @@ import torch.nn.functional as F
 from torch import Tensor, einsum
 from .focal_loss import FocalLoss
 
-def make_one_hot(labels, classes):
+def make_one_hot(labels, classes, mask=None):
     one_hot = torch.FloatTensor(labels.size()[0], classes, labels.size()[2], labels.size()[3]).zero_().to(labels.device)
     target = one_hot.scatter_(1, labels.data, 1)
+    if mask is not None:
+        target = target[mask]
     return target
 
 class DiceLoss(nn.Module):
@@ -17,23 +19,26 @@ class DiceLoss(nn.Module):
         self.eps = eps
         self.ignore_index = ignore_index
 
-    def forward(self, preds, labels):        
+    def forward(self, preds, labels):
+        classes = preds.size()[1]
+        preds = F.softmax(preds, dim=1)
+
         if self.ignore_index is not None:
             mask = labels != self.ignore_index
-            labels = labels[mask]
+            mask = mask.unsqueeze(1).expand(-1, preds.size(1), -1, -1)
+            # labels = labels[mask]
             preds = preds[mask]
+        else:
+            mask = None
 
-        target = make_one_hot(labels.unsqueeze(dim=1), classes=preds.size()[1])
-        preds = F.softmax(preds, dim=1)
+        labels = make_one_hot(labels.unsqueeze(dim=1), classes=classes, mask=mask)
         preds_flat = preds.contiguous().view(-1)
-        target_flat = target.contiguous().view(-1)
-        intersection = (preds_flat * target_flat).sum()
+        labels_flat = labels.contiguous().view(-1)
+        intersection = (preds_flat * labels_flat).sum()
         loss = 1 - ((2. * intersection + self.smooth) /
-                    (preds_flat.sum() + target_flat.sum() + self.smooth + self.eps))
+                    (preds_flat.sum() + labels_flat.sum() + self.smooth + self.eps))
         return loss
 
-
-        return loss
 
 class GeneralizedDiceLoss(nn.Module):
     def __init__(self, smooth=0, eps=1e-10, ignore_index=255):
@@ -46,7 +51,7 @@ class GeneralizedDiceLoss(nn.Module):
         if self.ignore_index is not None:
             mask = labels != self.ignore_index
             labels = labels[mask]
-            preds = preds[mask]
+            preds = preds[mask.unsqueeze(1).expand(-1, preds.size(1), -1, -1)]
 
         pc = preds.type(torch.float32)
         tc = labels.type(torch.float32)
