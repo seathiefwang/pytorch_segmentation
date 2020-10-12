@@ -52,7 +52,7 @@
         }
     },
 
-    "loss": "LovaszSoftmax",
+    "loss": "FocalDiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",

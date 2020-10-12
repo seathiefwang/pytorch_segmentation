@@ -6,7 +6,7 @@ import dataloaders
 import models
 import inspect
 import math
-from utils import losses
+import losses
 from utils import Logger
 from utils.torchsummary import summary
 from trainer import Trainer
