@@ -93,6 +93,62 @@ class DecoderRes(nn.Module):
                 module.bias.data.zero_()
 
 
+class DecoderSC(nn.Module):
+    def __init__(self, in_channels, middle_channels, out_channels):
+        super(DecoderSC, self).__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(middle_channels),
+            nn.ReLU(inplace=True),
+        )
+
+        self.block2 = nn.Sequential(
+            nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+        self.spatial_gate = nn.Sequential(
+            nn.Conv2d(out_channels, 1, kernel_size=1, padding=0),
+            nn.BatchNorm2d(1),
+            nn.Sigmoid()
+        )
+
+        self.channel_gate = nn.Sequential(
+            nn.Conv2d(out_channels, out_channels//2, kernel_size=1, padding=0),
+            nn.BatchNorm2d(out_channels//2),
+            nn.ReLU(),
+            nn.Conv2d(out_channels//2, out_channels, kernel_size=1, padding=0),
+            nn.BatchNorm2d(out_channels),
+            nn.Sigmoid()
+        )
+        self._initialize_weights()
+
+    def forward(self, *args):
+        if len(args) > 1:
+            x = torch.cat(args, 1)
+        else:
+            x = args[0]
+        x = self.block(x)
+        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
+        x = self.block2(x)
+        g1 = self.spatial_gate(x)
+
+        g2 = self.channel_gate(F.avg_pool2d(x, x.size()[2:]))
+        x = g1*x + g2*x
+        return x
+    
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    module.bias.data.zero_()
+            elif isinstance(module, nn.BatchNorm2d):
+                module.weight.data.fill_(1)
+                module.bias.data.zero_()
+
+
 class UNet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
         super(UNet, self).__init__()
@@ -286,10 +342,75 @@ class MUnet(BaseModel):
     def get_decoder_params(self):
         return self.parameters()
 
-class IncepUnet(BaseModel):
+class MSCUnet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
-        super(IncepUnet, self).__init__()
+        super(MSCUnet, self).__init__()
         model = models.mobilenet_v2(pretrained=True)
+
+        self.down1 = nn.Sequential(model.features[0],
+                                    model.features[1]) # 16 - 128
+        self.down2 = nn.Sequential(model.features[2],
+                                    model.features[3]) # 24 - 64
+        self.down3 = nn.Sequential(model.features[4],
+                                    model.features[5],
+                                    model.features[6]) # 32 - 32
+        self.down4 = nn.Sequential(model.features[7],
+                                    model.features[8],
+                                    model.features[9],
+                                    model.features[10],
+                                    model.features[11],
+                                    model.features[12],
+                                    model.features[13]) # 96 - 16
+        self.middle_conv = nn.Sequential(
+            model.features[14],
+            model.features[15],
+            model.features[16],
+            model.features[17], # 320 - 8
+            DecoderSC(320, 160, 160)
+        )
+        self.up1 = DecoderSC(160+96, 128, 128)
+        self.up2 = DecoderSC(128+32, 64, 64)
+        self.up3 = DecoderSC(64+24, 32, 32)
+        self.up4 = DecoderSC(32+16, 16, 16)
+        # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(16+32+64+128, 64, kernel_size=1, padding=0),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+
+    def forward(self, x):
+        x1 = self.down1(x)
+        x2 = self.down2(x1)
+        x3 = self.down3(x2)
+        x4 = self.down4(x3)
+        c = self.middle_conv(x4)
+        d4 = self.up1(x4, c)
+        d3 = self.up2(x3, d4)
+        d2 = self.up3(x2, d3)
+        d1 = self.up4(x1, d2)
+
+        u4 = F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False)
+        u3 = F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False)
+        u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
+        d = torch.cat((d1, u2, u3, u4), 1)
+        x = self.final_conv(d)
+        return x
+
+    def get_backbone_params(self):
+        # There is no backbone for unet, all the parameters are trained from scratch
+        return []
+
+    def get_decoder_params(self):
+        return self.parameters()
+
+
+class VGGUnet(BaseModel):
+    def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
+        super(VGGUnet, self).__init__()
+        model = models.vgg13_bn(pretrained=True)
 
         self.down1 = nn.Sequential(model.features[0],
                                     model.features[1]) # 16 - 128

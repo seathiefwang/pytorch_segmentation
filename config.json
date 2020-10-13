@@ -1,10 +1,10 @@
 {
-    "name": "MUnet",
+    "name": "MSCUnet",
     "n_gpu": 2,
     "use_synch_bn": true,
 
     "arch": {
-        "type": "MUnet",
+        "type": "MSCUnet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,
@@ -16,7 +16,7 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 32,
+            "batch_size": 4,
             "base_size": 256,
             "crop_size": 256,
             "augment": true,
@@ -52,7 +52,7 @@
         }
     },
 
-    "loss": "CE_GDiceLoss",
+    "loss": "CE_DiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",

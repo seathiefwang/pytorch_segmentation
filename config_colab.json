@@ -1,10 +1,10 @@
 {
-    "name": "MUnet",
-    "n_gpu": 2,
+    "name": "MSCUnet",
+    "n_gpu": 1,
     "use_synch_bn": true,
 
     "arch": {
-        "type": "MUnet",
+        "type": "MSCUnet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,
@@ -26,7 +26,7 @@
             "rotate": true,
             "blur": false,
             "split": "train_all",
-            "num_workers": 4
+            "num_workers": 8
         }
     },
 
@@ -52,7 +52,7 @@
         }
     },
 
-    "loss": "CE_GDiceLoss",
+    "loss": "CE_DiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
