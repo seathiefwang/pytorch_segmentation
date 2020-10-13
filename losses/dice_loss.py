@@ -68,6 +68,8 @@ class GeneralizedDiceLoss(nn.Module):
 
         return loss
 
+
+
 class FocalDiceLoss(nn.Module):
     def __init__(self, dice_weight=0.5, focal_weight=0.5, ignore_index=255):
         super(FocalDiceLoss, self).__init__()

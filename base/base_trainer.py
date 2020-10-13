@@ -26,7 +26,7 @@ class BaseTrainer:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.do_validation = self.config['trainer']['val']
         self.start_epoch = 1
-        self.improved = False
+        self.improved = True
 
         # SETTING THE DEVICE
         self.device, availble_gpus = self._get_available_devices(self.config['n_gpu'])
