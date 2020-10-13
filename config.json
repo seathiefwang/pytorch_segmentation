@@ -16,7 +16,7 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 8,
+            "batch_size": 32,
             "base_size": 256,
             "crop_size": 256,
             "augment": true,
@@ -52,7 +52,7 @@
         }
     },
 
-    "loss": "CrossEntropyLoss",
+    "loss": "CE_GDiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",

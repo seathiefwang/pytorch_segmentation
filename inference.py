@@ -82,7 +82,8 @@ def multi_scale_predict(model, image, scales, num_classes, device, flip=False):
 
 
 def multi_flip_predict(model, image, num_classes, device):
-    flips = [-1, -2, 1, 2, 3]
+    # flips = [-1, -2, 1, 2, 3]
+    flips = [-1, -2]
     total_predictions = np.zeros((num_classes, image.size(2), image.size(3)))
 
     prediction = model(image.to(device))

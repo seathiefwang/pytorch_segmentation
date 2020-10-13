@@ -98,6 +98,19 @@ class CE_DiceLoss(nn.Module):
         # print("ce dice :", CE_loss.item(), dice_loss.item())
         return self.ce_weight * CE_loss + self.dice_weight * dice_loss
 
+class CE_GDiceLoss(nn.Module):
+    def __init__(self, dice_weight=0.5, ce_weight=0.5, ignore_index=255):
+        super(CE_GDiceLoss, self).__init__()
+        self.dice_weight = dice_weight
+        self.ce_weight = ce_weight
+        self.dice = GeneralizedDiceLoss()
+        self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
+    
+    def forward(self, output, target):
+        CE_loss = self.cross_entropy(output, target)
+        dice_loss = self.dice(output, target)
+        # print("ce dice :", CE_loss.item(), dice_loss.item())
+        return self.ce_weight * CE_loss + self.dice_weight * dice_loss
 
 class ExDiceLoss(nn.Module):
     def __init__(self, smooth=0, gamma=1, eps=1e-10, ignore_index=255):
