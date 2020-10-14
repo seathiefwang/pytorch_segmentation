@@ -413,33 +413,30 @@ class VGGUnet(BaseModel):
         model = models.vgg13_bn(pretrained=True)
 
         self.down1 = nn.Sequential(model.features[0],
-                                    model.features[1]) # 16 - 128
-        self.down2 = nn.Sequential(model.features[2],
-                                    model.features[3]) # 24 - 64
-        self.down3 = nn.Sequential(model.features[4],
-                                    model.features[5],
-                                    model.features[6]) # 32 - 32
-        self.down4 = nn.Sequential(model.features[7],
-                                    model.features[8],
-                                    model.features[9],
+                                    model.features[1],
+                                    model.features[2]) # 64 - 128
+        self.down2 = nn.Sequential(model.features[3],
+                                    model.features[4],
+                                    model.features[5]) # 128 - 64
+        self.down3 = nn.Sequential(model.features[6],
+                                    model.features[7],
+                                    model.features[8]) # 256 - 32
+        self.down4 = nn.Sequential(model.features[9],
                                     model.features[10],
-                                    model.features[11],
-                                    model.features[12],
-                                    model.features[13]) # 96 - 16
+                                    model.features[11],) # 512 - 16
         self.middle_conv = nn.Sequential(
-            model.features[14],
-            model.features[15],
-            model.features[16],
-            model.features[17], # 320 - 8
-            DecoderRes(320, 160)
+            model.features[12],
+            model.features[13],
+            model.features[14], # 512 - 8
+            DecoderSC(512, 256, 64)
         )
-        self.up1 = DecoderRes(160+96, 96)
-        self.up2 = DecoderRes(96+32, 32)
-        self.up3 = DecoderRes(32+24, 24)
-        self.up4 = DecoderRes(24+16, 16)
+        self.up1 = DecoderSC(64+512, 256, 64)
+        self.up2 = DecoderSC(64+256, 128, 64)
+        self.up3 = DecoderSC(64+128, 96, 64)
+        self.up4 = DecoderSC(64+64, 64, 32)
         # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
         self.final_conv = nn.Sequential(
-            nn.Conv2d(16+24+32+96, 64, kernel_size=1, padding=0),
+            nn.Conv2d(32+64+64+64, 64, kernel_size=1, padding=0),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, num_classes, kernel_size=1)

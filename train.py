@@ -7,9 +7,17 @@ import models
 import inspect
 import math
 import losses
+import numpy as np
+import random
 from utils import Logger
 from utils.torchsummary import summary
 from trainer import Trainer
+
+seed = 1000000
+np.random.seed(seed)
+random.seed(seed)
+torch.random.manual_seed(seed)
+torch.cuda.manual_seed_all(seed)
 
 def get_instance(module, name, config, *args):
     # GET THE CORRESPONDING CLASS / FCT 

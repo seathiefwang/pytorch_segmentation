@@ -1,10 +1,10 @@
 {
-    "name": "ResUnet",
+    "name": "MUnet",
     "n_gpu": 2,
     "use_synch_bn": true,
 
     "arch": {
-        "type": "ResUnet",
+        "type": "MUnet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,

@@ -99,12 +99,19 @@ def multi_flip_predict(model, image, num_classes, device):
         if fp > 0:
             fliped_predictions = fliped_predictions.rot90(-fp, (2, 3))
         else:
-            fliped_predictions = fliped_predictions.flip(-1)
+            fliped_predictions = fliped_predictions.flip(fp)
         total_predictions += fliped_predictions.data.cpu().numpy().squeeze(0)
 
     total_predictions /= len(flips)+1
     return total_predictions
 
+# def multi_vote_predict(model, image, num_classes, device):
+    
+#     for fp in flips:
+
+        
+#         fliped_predictions = model(fliped_image)
+#         prediction = F.softmax(torch.from_numpy(prediction), dim=0).argmax(0).cpu().numpy()
 
 def save_images(image, mask, output_path, image_file, num_classes):
 	# Saves the image, the model output and the results after the post processing
