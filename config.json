@@ -16,7 +16,7 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 1,
+            "batch_size": 2,
             "base_size": 256,
             "crop_size": 256,
             "augment": true,

@@ -412,22 +412,12 @@ class VGGUnet(BaseModel):
         super(VGGUnet, self).__init__()
         model = models.vgg13_bn(pretrained=True)
         print(model.features)
-        self.down1 = nn.Sequential(model.features[0],
-                                    model.features[1],
-                                    model.features[2]) # 64 - 128
-        self.down2 = nn.Sequential(model.features[3],
-                                    model.features[4],
-                                    model.features[5]) # 128 - 64
-        self.down3 = nn.Sequential(model.features[6],
-                                    model.features[7],
-                                    model.features[8]) # 256 - 32
-        self.down4 = nn.Sequential(model.features[9],
-                                    model.features[10],
-                                    model.features[11],) # 512 - 16
+        self.down1 = nn.Sequential(model.features[0:7]) # 64 - 128
+        self.down2 = nn.Sequential(model.features[7:14]) # 128 - 64
+        self.down3 = nn.Sequential(model.features[14:21]) # 256 - 32
+        self.down4 = nn.Sequential(model.features[21:28]) # 512 - 16
         self.middle_conv = nn.Sequential(
-            model.features[12],
-            model.features[13],
-            model.features[14], # 512 - 8
+            model.features[28:35], # 512 - 8
             DecoderSC(512, 256, 64)
         )
         self.up1 = DecoderSC(64+512, 256, 64)
@@ -448,7 +438,6 @@ class VGGUnet(BaseModel):
         x2 = self.down2(x1)
         x3 = self.down3(x2)
         x4 = self.down4(x3)
-        print(x4.shape, x3.shape)
         c = self.middle_conv(x4)
         d4 = self.up1(x4, c)
         d3 = self.up2(x3, d4)
