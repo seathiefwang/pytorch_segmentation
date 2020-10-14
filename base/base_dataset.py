@@ -60,7 +60,7 @@ class BaseDataSet(Dataset):
 
             self.resizer = albu.Compose([
                             albu.Resize(base_size, base_size, p=1),
-                            albu.RandomScale(scale_limit=(-0.1, 0.1), p=1),
+                            albu.RandomScale(scale_limit=(-0.3, 0), p=1),
                             albu.PadIfNeeded(min_height=crop_size, min_width=crop_size,
                                             value=0, mask_value=255, p=1),
                             albu.RandomCrop(height=crop_size, width=crop_size, p=1)
