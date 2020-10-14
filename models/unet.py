@@ -411,7 +411,7 @@ class VGGUnet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
         super(VGGUnet, self).__init__()
         model = models.vgg13_bn(pretrained=True)
-        print(model.features)
+
         self.down1 = nn.Sequential(model.features[0:7]) # 64 - 128
         self.down2 = nn.Sequential(model.features[7:14]) # 128 - 64
         self.down3 = nn.Sequential(model.features[14:21]) # 256 - 32

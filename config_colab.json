@@ -16,7 +16,7 @@
         "type": "RSI",
         "args":{
             "data_dir": "/content/segmentation_data",
-            "batch_size": 32,
+            "batch_size": 24,
             "base_size": 224,
             "crop_size": 192,
             "augment": true,
