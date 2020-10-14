@@ -222,15 +222,15 @@ class ResUnet(BaseModel):
         self.down4 = model.layer3 # 1024
         self.middle_conv = nn.Sequential(
             nn.MaxPool2d(2, 2),
-            DecoderRes(1024, 512)
+            DecoderSC(1024, 512, 64)
         )
-        self.up1 = DecoderRes(512+1024, 512)
-        self.up2 = DecoderRes(512+512, 256)
-        self.up3 = DecoderRes(256+256, 128)
-        self.up4 = DecoderRes(128+128, 64)
+        self.up1 = DecoderSC(64+1024, 512, 64)
+        self.up2 = DecoderSC(64+512, 256, 64)
+        self.up3 = DecoderSC(64+256, 128, 64)
+        self.up4 = DecoderSC(64+128, 96, 64)
         # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
         self.final_conv = nn.Sequential(
-            nn.Conv2d(64+128+256+512, 64, kernel_size=1, padding=0),
+            nn.Conv2d(64+64+64+64, 64, kernel_size=1, padding=0),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, num_classes, kernel_size=1)
