@@ -175,7 +175,8 @@ class BaseTrainer:
         # if self.lr_scheduler:
         #     self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
 
-        self.train_logger = checkpoint['logger']
+        # self.train_logger = checkpoint['logger']
+        # self.train_logger = Logger()
         self.logger.info(f'Checkpoint <{resume_path}> (epoch {self.start_epoch}) was loaded')
 
     def _train_epoch(self, epoch):

@@ -6,6 +6,37 @@ import torchvision.models as models
 import torch.nn.functional as F
 from itertools import chain
 
+class ASKCFuse(nn.Module):
+    __init__(self, channels=64, r=4):
+    super().__init__()
+    inter_channels = int(channels // r)
+
+    self.local_att = nn.Sequential(
+        nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
+        nn.BatchNorm2d(),
+        nn.ReLU(),
+        nn.Conv2d(channels, kernel_size=1, stride=1, padding=0),
+        nn.BatchNorm2d()
+    )
+
+    self.global_att = nn.Sequential(
+        nn.AdaptiveAvgPool2d()
+        nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
+        nn.BatchNorm2d(),
+        nn.ReLU(),
+        nn.Conv2d(channels, kernel_size=1, stride=1, padding=0)
+        nn.BatchNorm2d()
+    )
+
+    def forward(self, x, residual):
+        xa = x + residual
+        xl = self.local_add(xa)
+        xg = self.global_att(xa)
+        xlg = torch.add(xl,  xg)
+        wei = F.sigmoid(xlg)
+        xo = 2 * torch.mul(x, wei) + 2 * torch.mul(residual, 1-wei)
+        return xo
+
 class encoder(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(encoder, self).__init__()
