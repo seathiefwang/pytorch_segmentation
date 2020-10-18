@@ -30,10 +30,10 @@ def multi_plus_predict(models, image, num_classes, device):
     total_predictions /= len(models)+1
     return total_predictions
 
-def multi_vote_predict(models, image, num_classes, device):
+def multi_vote_predict(model_list, image, num_classes, device):
     total_predictions = []
     image = image.to(device)
-    for model in models:
+    for model in model_list:
         prediction = model(image)
         prediction = F.softmax(prediction.squeeze(0), dim=0).argmax(0).cpu().numpy()
         total_predictions.append(prediction)
@@ -106,11 +106,8 @@ def main():
 
     # Dataset used for training the model
     dataset_type = config['train_loader']['type']
-    assert dataset_type in ['VOC', 'COCO', 'CityScapes', 'ADE20K', 'RSI']
-    if dataset_type == 'CityScapes': 
-        scales = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25] 
-    else:
-        scales = [0.75, 1.0, 1.25, 1.5]
+    assert dataset_type in ['RSI']
+
     loader = getattr(dataloaders, config['train_loader']['type'])(**config['train_loader']['args'])
     to_tensor = transforms.ToTensor()
     normalize = transforms.Normalize(loader.MEAN, loader.STD)
@@ -119,18 +116,18 @@ def main():
     availble_gpus = list(range(torch.cuda.device_count()))
     device = torch.device('cuda:0' if len(availble_gpus) > 0 else 'cpu')
 
-    models = []
+    model_list = []
     for model_path in args.models:
         model = load_model(config['arch']['type'], model_path, num_classes, device)
-        models.append(model)
+        model_list.append(model)
 
     for model_path in args.models2:
         model = load_model(config2['arch']['type'], model_path, num_classes, device)
-        models.append(model)
-    print("model num:", len(models))
+        model_list.append(model)
+    print("model num:", len(model_list))
 
-    if not os.path.exists('outputs'):
-        os.makedirs('outputs')
+    if not os.path.exists(args.output):
+        os.makedirs(args.output)
 
     image_files = sorted(glob(os.path.join(args.images, f'*.{args.extension}')))
     with torch.no_grad():
@@ -140,7 +137,7 @@ def main():
             input = normalize(to_tensor(image)).unsqueeze(0)
             
             if args.mode == 'vote':
-                prediction = multi_vote_predict(models, input, num_classes, device)
+                prediction = multi_vote_predict(model_list, input, num_classes, device)
             else:
                 prediction = model(input.to(device))
                 prediction = prediction.squeeze(0).cpu().numpy()

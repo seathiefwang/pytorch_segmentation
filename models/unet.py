@@ -7,26 +7,26 @@ import torch.nn.functional as F
 from itertools import chain
 
 class ASKCFuse(nn.Module):
-    __init__(self, channels=64, r=4):
-    super().__init__()
-    inter_channels = int(channels // r)
+    def __init__(self, channels=64, r=4):
+        super().__init__()
+        inter_channels = int(channels // r)
 
-    self.local_att = nn.Sequential(
-        nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
-        nn.BatchNorm2d(),
-        nn.ReLU(),
-        nn.Conv2d(channels, kernel_size=1, stride=1, padding=0),
-        nn.BatchNorm2d()
-    )
+        self.local_att = nn.Sequential(
+            nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(),
+            nn.ReLU(),
+            nn.Conv2d(channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d()
+        )
 
-    self.global_att = nn.Sequential(
-        nn.AdaptiveAvgPool2d()
-        nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
-        nn.BatchNorm2d(),
-        nn.ReLU(),
-        nn.Conv2d(channels, kernel_size=1, stride=1, padding=0)
-        nn.BatchNorm2d()
-    )
+        self.global_att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(),
+            nn.Conv2d(inter_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(),
+            nn.ReLU(),
+            nn.Conv2d(channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d()
+        )
 
     def forward(self, x, residual):
         xa = x + residual

@@ -150,6 +150,7 @@ class BaseTrainer:
         filename = os.path.join(self.checkpoint_dir, f'checkpoint-epoch{epoch}.pth')
         self.logger.info(f'\nSaving a checkpoint: {filename} ...') 
         torch.save(state, filename)
+        torch.save(self.model.state_dict(), os.path.join(self.checkpoint_dir, f'model-epoch{epoch}.pth'))
 
         if save_best:
             filename = os.path.join(self.checkpoint_dir, f'best_model.pth')
@@ -171,7 +172,7 @@ class BaseTrainer:
 
         if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
             self.logger.warning({'Warning! Current optimizer is not the same as the one in the checkpoint'})
-        self.optimizer.load_state_dict(checkpoint['optimizer'])
+        # self.optimizer.load_state_dict(checkpoint['optimizer'])
         # if self.lr_scheduler:
         #     self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
 

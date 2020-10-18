@@ -16,7 +16,7 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 32,
+            "batch_size": 30,
             "base_size": 256,
             "crop_size": 256,
             "augment": true,
@@ -26,7 +26,7 @@
             "rotate": true,
             "blur": false,
             "split": "train_all",
-            "num_workers": 4
+            "num_workers": 8
         }
     },
 
@@ -46,34 +46,34 @@
         "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.01,
+            "lr": 0.001,
             "weight_decay": 1e-4,
             "momentum": 0.9
         }
     },
 
-    "loss": "CE_DiceLoss",
+    "loss": "CE_LovaszLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
         "args": {
             "t_max": 10,
-            "eta_min": 1e-5,
+            "eta_min": 1e-6,
             "factor": 1
         }
     },
 
     "trainer": {
-        "epochs": 80,
+        "epochs": 120,
         "save_dir": "saved/",
-        "save_period": 10,
+        "save_period": 5,
   
         "monitor": "max Mean_IoU",
         "early_stop": 10,
         
         "tensorboard": true,
         "log_dir": "saved/runs",
-        "log_per_iter": 100,
+        "log_per_iter": 200,
 
         "val": true,
         "val_per_epochs": 5
