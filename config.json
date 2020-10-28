@@ -1,10 +1,10 @@
 {
-    "name": "ResUnet",
+    "name": "ResNeStUnet",
     "n_gpu": 2,
     "use_synch_bn": true,
 
     "arch": {
-        "type": "ResUnet",
+        "type": "ResNeStUnet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,
@@ -16,16 +16,12 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
-            "batch_size": 30,
+            "batch_size": 20,
             "base_size": 256,
             "crop_size": 256,
-            "augment": true,
+            "batch_stride": 8,
             "shuffle": true,
-            "scale": true,
-            "flip": true,
-            "rotate": true,
-            "blur": false,
-            "split": "train_all",
+            "split": "train",
             "num_workers": 8
         }
     },
@@ -46,27 +42,27 @@
         "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.001,
+            "lr": 0.01,
             "weight_decay": 1e-4,
             "momentum": 0.9
         }
     },
 
-    "loss": "CE_LovaszLoss",
+    "loss": "CE_DiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
         "args": {
             "t_max": 10,
-            "eta_min": 1e-6,
+            "eta_min": 1e-5,
             "factor": 1
         }
     },
 
     "trainer": {
-        "epochs": 120,
+        "epochs": 80,
         "save_dir": "saved/",
-        "save_period": 5,
+        "save_period": 1,
   
         "monitor": "max Mean_IoU",
         "early_stop": 10,

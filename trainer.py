@@ -4,7 +4,7 @@ import numpy as np
 from torchvision.utils import make_grid
 from torchvision import transforms
 from utils import transforms as local_transforms
-from base import BaseTrainer, DataPrefetcher
+from base import BaseTrainer
 from utils.helpers import colorize_mask
 from utils.metrics import eval_metrics, AverageMeter
 from tqdm import tqdm
@@ -19,6 +19,8 @@ class Trainer(BaseTrainer):
 
         self.num_classes = self.train_loader.dataset.num_classes
 
+        self.batch_stride = config['train_loader']['args']['batch_stride']
+
         # TRANSORMS FOR VISUALIZATION
         self.restore_transform = transforms.Compose([
             local_transforms.DeNormalize(self.train_loader.MEAN, self.train_loader.STD),
@@ -27,11 +29,6 @@ class Trainer(BaseTrainer):
             transforms.Resize((400, 400)),
             transforms.ToTensor()])
         
-        if self.device ==  torch.device('cpu'): prefetch = False
-        if prefetch:
-            self.train_loader = DataPrefetcher(train_loader, device=self.device)
-            self.val_loader = DataPrefetcher(val_loader, device=self.device)
-
         torch.backends.cudnn.benchmark = True
 
     def _train_epoch(self, epoch):
@@ -46,15 +43,17 @@ class Trainer(BaseTrainer):
         self.wrt_mode = 'train'
 
         # tic = time.time()
-        step_loss = []
+        show_loss = []
         self._reset_metrics()
         tbar = tqdm(self.train_loader, ncols=130)
+        loader_size = len(self.train_loader)
         for batch_idx, (data, target) in enumerate(tbar):
             # self.data_time.update(time.time() - tic)
-            #data, target = data.to(self.device), target.to(self.device)
+            data, target = data.to(self.device), target.to(self.device)
 
             # LOSS & OPTIMIZE
-            self.optimizer.zero_grad()
+            if batch_idx % self.batch_stride == 0:
+                self.optimizer.zero_grad()
             output = self.model(data)
             if self.config['arch']['type'][:3] == 'PSP':
                 assert output[0].size()[2:] == target.size()[1:]
@@ -69,10 +68,17 @@ class Trainer(BaseTrainer):
 
             if isinstance(self.loss, torch.nn.DataParallel):
                 loss = loss.mean()
+            
+            loss_item = loss.item()
+            loss = loss / self.batch_stride
+
             loss.backward()
-            self.optimizer.step()
-            self.total_loss.update(loss.item())
-            step_loss.append(loss.item())
+
+            if (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size:
+                self.optimizer.step()
+            
+            self.total_loss.update(loss_item)
+            show_loss.append(loss_item)
 
             # measure elapsed time
             # self.batch_time.update(time.time() - tic)
@@ -81,8 +87,8 @@ class Trainer(BaseTrainer):
             # LOGGING & TENSORBOARD
             if batch_idx % self.log_step == 0:
                 self.wrt_step = (epoch - 1) * len(self.train_loader) + batch_idx
-                self.writer.add_scalar(f'{self.wrt_mode}/loss', np.mean(step_loss), self.wrt_step)
-                step_loss.clear()
+                self.writer.add_scalar(f'{self.wrt_mode}/loss', np.mean(show_loss), self.wrt_step)
+                show_loss.clear()
 
             # FOR EVAL
             seg_metrics = eval_metrics(output, target, self.num_classes)
@@ -123,7 +129,7 @@ class Trainer(BaseTrainer):
         with torch.no_grad():
             val_visual = []
             for batch_idx, (data, target) in enumerate(tbar):
-                #data, target = data.to(self.device), target.to(self.device)
+                data, target = data.to(self.device), target.to(self.device)
                 # LOSS
                 output = self.model(data)
                 loss = self.loss(output, target)

@@ -5,6 +5,10 @@ from models import resnet
 import torchvision.models as models
 import torch.nn.functional as F
 from itertools import chain
+from .resnest import resnest50
+from .decoder import DecoderNormal, DecoderSC, DecoderClass
+
+Decoder = DecoderClass
 
 class ASKCFuse(nn.Module):
     def __init__(self, channels=64, r=4):
@@ -54,131 +58,6 @@ class encoder(nn.Module):
         x = self.down_conv(x)
         x_pooled = self.pool(x)
         return x, x_pooled
-
-class decoder(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(decoder, self).__init__()
-        self.up = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=2, stride=2)
-        self.up_conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-
-    def forward(self, x_copy, x, interpolate=True):
-        x = self.up(x)
-        if interpolate:
-            # Iterpolating instead of padding gives better results
-            x = F.interpolate(x, size=(x_copy.size(2), x_copy.size(3)),
-                              mode="bilinear", align_corners=True)
-        else:
-            # Padding in case the incomping volumes are of different sizes
-            diffY = x_copy.size()[2] - x.size()[2]
-            diffX = x_copy.size()[3] - x.size()[3]
-            x = F.pad(x, (diffX // 2, diffX - diffX // 2,
-                            diffY // 2, diffY - diffY // 2))
-        # Concatenate
-        x = torch.cat([x_copy, x], dim=1)
-        x = self.up_conv(x)
-        return x
-
-class DecoderRes(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DecoderRes, self).__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-            )
-            # nn.PixleShuffle(upscale_factor=2),
-            # nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False), # 最近邻（nearest），线性插值（linear），双线性插值（bilinear），三次线性插值（trilinear），默认是最近邻（nearest）
-            
-        self.block2 = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            # nn.ReLU(inplace=True),
-        )
-        self._initialize_weights()
-
-    def forward(self, *args):
-        if len(args) > 1:
-            x = torch.cat(args, 1)
-        else:
-            x = args[0]
-        x = self.block(x)
-        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
-        x = self.block2(x)
-        return x
-    
-    def _initialize_weights(self):
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
-                nn.init.kaiming_normal_(module.weight)
-                if module.bias is not None:
-                    module.bias.data.zero_()
-            elif isinstance(module, nn.BatchNorm2d):
-                module.weight.data.fill_(1)
-                module.bias.data.zero_()
-
-
-class DecoderSC(nn.Module):
-    def __init__(self, in_channels, middle_channels, out_channels):
-        super(DecoderSC, self).__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(middle_channels),
-            nn.ReLU(inplace=True),
-        )
-
-        self.block2 = nn.Sequential(
-            nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
-        )
-
-        self.spatial_gate = nn.Sequential(
-            nn.Conv2d(out_channels, 1, kernel_size=1, padding=0),
-            nn.BatchNorm2d(1),
-            nn.Sigmoid()
-        )
-
-        self.channel_gate = nn.Sequential(
-            nn.Conv2d(out_channels, out_channels//2, kernel_size=1, padding=0),
-            nn.BatchNorm2d(out_channels//2),
-            nn.ReLU(),
-            nn.Conv2d(out_channels//2, out_channels, kernel_size=1, padding=0),
-            nn.BatchNorm2d(out_channels),
-            nn.Sigmoid()
-        )
-        self._initialize_weights()
-
-    def forward(self, *args):
-        if len(args) > 1:
-            x = torch.cat(args, 1)
-        else:
-            x = args[0]
-        x = self.block(x)
-        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
-        x = self.block2(x)
-        g1 = self.spatial_gate(x)
-
-        g2 = self.channel_gate(F.avg_pool2d(x, x.size()[2:]))
-        x = g1*x + g2*x
-        return x
-    
-    def _initialize_weights(self):
-        for module in self.modules():
-            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
-                nn.init.kaiming_normal_(module.weight)
-                if module.bias is not None:
-                    module.bias.data.zero_()
-            elif isinstance(module, nn.BatchNorm2d):
-                module.weight.data.fill_(1)
-                module.bias.data.zero_()
-
 
 class UNet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
@@ -333,15 +212,15 @@ class MUnet(BaseModel):
             model.features[15],
             model.features[16],
             model.features[17], # 320 - 8
-            DecoderRes(320, 160)
+            Decoder(320, 160, 80)
         )
-        self.up1 = DecoderRes(160+96, 128)
-        self.up2 = DecoderRes(128+32, 64)
-        self.up3 = DecoderRes(64+24, 32)
-        self.up4 = DecoderRes(32+16, 16)
+        self.up1 = Decoder(80+96, 128, 64)
+        self.up2 = Decoder(64+32, 64, 32)
+        self.up3 = Decoder(32+24, 32, 16)
+        self.up4 = DecoderSC(16+16, 16, 8)
         # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
         self.final_conv = nn.Sequential(
-            nn.Conv2d(16+32+64+128, 64, kernel_size=1, padding=0),
+            nn.Conv2d(8+16+32+64, 64, kernel_size=1, padding=0),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, num_classes, kernel_size=1)
@@ -438,7 +317,6 @@ class MSCUnet(BaseModel):
         return self.parameters()
 
 
-class VGGUnet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
         super(VGGUnet, self).__init__()
         model = models.vgg13_bn(pretrained=True)
@@ -488,3 +366,87 @@ class VGGUnet(BaseModel):
 
     def get_decoder_params(self):
         return self.parameters()
+
+
+
+class ResNeStUnet(BaseModel):
+    def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
+        super(ResNeStUnet, self).__init__()
+        model = resnest50(True)
+        self.down1 = nn.Sequential(model.conv1, 
+                                    model.bn1,
+                                    model.relu) # 64
+        self.down2 = nn.Sequential(model.maxpool,
+                                    model.layer1) # 256
+        self.down3 = model.layer2 # 512
+        self.down4 = model.layer3 # 1024
+        self.middle_conv = nn.Sequential(
+            nn.MaxPool2d(2, 2),
+            DecoderSC(1024, 512, 128)
+        )
+        self.up1 = DecoderSC(128+1024, 512, 64)
+        self.up2 = DecoderSC(64+512, 256, 64)
+        self.up3 = DecoderSC(64+64+256, 128, 64)
+        self.up4 = DecoderSC(64+64+64+64, 128, 64)
+        # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(64+64+64+64, 64, kernel_size=1, padding=0),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    module.bias.data.zero_()
+            elif isinstance(module, nn.BatchNorm2d):
+                module.weight.data.fill_(1)
+                module.bias.data.zero_()
+
+    def forward(self, x):
+        x1 = self.down1(x)
+        x2 = self.down2(x1)
+        x3 = self.down3(x2)
+        x4 = self.down4(x3)
+        c = self.middle_conv(x4)
+        d4 = self.up1(x4, c)
+        d3 = self.up2(x3, d4)
+
+        # up2 interpolate
+        up1_1 = F.interpolate(d4, scale_factor=2, mode='bilinear', align_corners=False)
+        d3_x = torch.cat((d3, up1_1), 1)
+
+        d2 = self.up3(x2, d3_x)
+
+        # up3 interpolate
+        up3_1 = F.interpolate(d4, scale_factor=4, mode='bilinear', align_corners=False)
+        up3_2 = F.interpolate(d3, scale_factor=2, mode='bilinear', align_corners=False)
+        d2_x = torch.cat((d2, up3_2, up3_1), 1)
+        
+        d1 = self.up4(x1, d2_x)
+
+        u4 = F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False)
+        u3 = F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False)
+        u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
+        d = torch.cat((d1, u2, u3, u4), 1)
+        x = self.final_conv(d)
+        return x
+
+    def get_backbone_params(self):
+        # There is no backbone for unet, all the parameters are trained from scratch
+        return chain(self.down1.parameters(), self.down2.parameters(), 
+                    self.down3.parameters(), self.down4.parameters())
+
+    def get_decoder_params(self):
+        return chain(self.up1.parameters(), self.up2.parameters(), self.up3.parameters(), self.up4.parameters(), 
+            self.middle_conv.parameters(), self.final_conv.parameters())
+
+    def freeze_bn(self):
+        for module in self.modules():
+            if isinstance(module, nn.BatchNorm2d): module.eval()
+
+

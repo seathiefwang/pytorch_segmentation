@@ -11,13 +11,13 @@ from torchvision import transforms
 
 class RSIDataset(BaseDataSet):
 
-    def __init__(self, **kwargs):
-        self.num_classes = 8
+    def __init__(self, num_classes=15, **kwargs):
+        self.num_classes = num_classes
         self.palette = palette.get_voc_palette(self.num_classes)
         super(RSIDataset, self).__init__(**kwargs)
 
     def _set_files(self):
-        self.root = os.path.join(self.root, 'train')
+        self.root = os.path.join(self.root, 'rematch')
         self.image_dir = os.path.join(self.root, 'image')
         self.label_dir = os.path.join(self.root, 'label')
 
@@ -29,14 +29,18 @@ class RSIDataset(BaseDataSet):
         if self.num_classes == 8:
             matches = [800, 100, 200, 300, 400, 500, 600, 700]
         elif self.num_classes == 17:
-            matches = [100, 200, 300, 400, 500, 600, 700, 800]
+            matches = [17, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        elif self.num_classes == 15:
+            matches = [17, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
 
         h, w = label.shape
         seg_labels = np.zeros((w, h), dtype=np.uint8)
 
         for i in range(self.num_classes):
             seg_labels[label == matches[i]] = i
-            
+        
+        seg_labels[label == 0] = 0
+
         return seg_labels
 
     def _load_data(self, index):
@@ -100,7 +104,7 @@ class RSIFastDataset(BaseDataSet):
 
 class RSI(BaseDataLoader):
     def __init__(self, data_dir, batch_size, split, crop_size=None, base_size=None, scale=True, num_workers=1, val=False,
-                    shuffle=False, flip=False, rotate=False, blur= False, augment=False, val_split= None, return_id=False):
+                    shuffle=True, val_split=None, return_id=False, **kwargs):
         
         self.MEAN = [0.45734706, 0.43338275, 0.40058118]
         self.STD = [0.23965294, 0.23532275, 0.2398498]
@@ -110,13 +114,8 @@ class RSI(BaseDataLoader):
             'split': split,
             'mean': self.MEAN,
             'std': self.STD,
-            'augment': augment,
             'crop_size': crop_size,
             'base_size': base_size,
-            'scale': scale,
-            'flip': flip,
-            'blur': blur,
-            'rotate': rotate,
             'return_id': return_id,
             'val': val
         }

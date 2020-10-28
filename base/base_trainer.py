@@ -33,6 +33,11 @@ class BaseTrainer:
         if config["use_synch_bn"]:
             self.model = convert_model(self.model)
             self.model = DataParallelWithCallback(self.model, device_ids=availble_gpus)
+
+            # self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model).to(self.device)
+            # torch.distributed.init_process_group(backend='nccl', world_size=1, init_method='tcp://127.0.0.1:12345', rank=0)
+            # # torch.distributed.init_process_group(backend='nccl', world_size=4, init_method='...')
+            # self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
         else:
             self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
         self.model.to(self.device)
@@ -175,6 +180,8 @@ class BaseTrainer:
         # self.optimizer.load_state_dict(checkpoint['optimizer'])
         # if self.lr_scheduler:
         #     self.lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+
+        self.lr_scheduler.step(self.start_epoch-2)
 
         # self.train_logger = checkpoint['logger']
         # self.train_logger = Logger()
