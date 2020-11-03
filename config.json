@@ -19,9 +19,9 @@
             "batch_size": 20,
             "base_size": 256,
             "crop_size": 256,
-            "batch_stride": 8,
+            "batch_stride": 1,
             "shuffle": true,
-            "split": "train",
+            "split": "train_all",
             "num_workers": 8
         }
     },

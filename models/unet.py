@@ -387,7 +387,7 @@ class ResNeStUnet(BaseModel):
         self.up1 = DecoderSC(128+1024, 512, 64)
         self.up2 = DecoderSC(64+512, 256, 64)
         self.up3 = DecoderSC(64+64+256, 128, 64)
-        self.up4 = DecoderSC(64+64+64+64, 128, 64)
+        self.up4 = DecoderSC(64+64+64+64, 128, 64, attention=False)
         # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
         self.final_conv = nn.Sequential(
             nn.Conv2d(64+64+64+64, 64, kernel_size=1, padding=0),

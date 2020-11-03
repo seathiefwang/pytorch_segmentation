@@ -60,7 +60,7 @@ class BaseTrainer:
         else:
             trainable_params = filter(lambda p:p.requires_grad, self.model.parameters())
         self.optimizer = get_instance(torch.optim, 'optimizer', config, trainable_params)
-        if config['lr_scheduler']['type'] == "CosineWithRestarts":
+        if config['lr_scheduler']['type'] == "CosineWithRestarts" or config['lr_scheduler']['type'] == "ReduceLROnPlateau":
             self.lr_scheduler = getattr(utils.lr_scheduler, config['lr_scheduler']['type'])(self.optimizer, **config['lr_scheduler']['args'])
         else:
             self.lr_scheduler = getattr(utils.lr_scheduler, config['lr_scheduler']['type'])(self.optimizer, self.epochs, len(train_loader))

@@ -2,15 +2,22 @@ import numpy as np
 from copy import deepcopy
 import torch
 from torch.utils.data import DataLoader
-from torch.utils.data.sampler import SubsetRandomSampler
+from torch.utils.data.sampler import SubsetRandomSampler, WeightedRandomSampler
 
 class BaseDataLoader(DataLoader):
-    def __init__(self, dataset, batch_size, shuffle, num_workers, val_split = 0.0):
+    def __init__(self, dataset, batch_size, shuffle, num_workers, val_split = 0.0, weights = None):
         self.shuffle = shuffle
         self.dataset = dataset
         self.nbr_examples = len(dataset)
-        if val_split: self.train_sampler, self.val_sampler = self._split_sampler(val_split)
-        else: self.train_sampler, self.val_sampler = None, None
+
+        if weights is not None:
+            self.train_sampler = WeightedRandomSampler(weights, num_samples=self.nbr_examples, replacement=True)
+            self.val_sampler = None
+            self.shuffle = False
+        elif val_split: 
+            self.train_sampler, self.val_sampler = self._split_sampler(val_split)
+        else: 
+            self.train_sampler, self.val_sampler = None, None
 
         self.init_kwargs = {
             'dataset': self.dataset,

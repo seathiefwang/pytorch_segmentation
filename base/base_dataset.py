@@ -34,7 +34,7 @@ class BaseDataSet(Dataset):
             self.affine_augmenter = albu.Compose([
                             albu.Flip(p=0.3),
                             albu.RandomRotate90(p=0.3),
-                            # albu.Rotate(limit=30, value=0, mask_value=0, p=0.01)
+                            albu.Rotate(limit=45, value=0, mask_value=0, p=0.01)
                             ])
 
             self.image_augmenter = albu.Compose([
@@ -42,11 +42,11 @@ class BaseDataSet(Dataset):
                                 albu.GaussNoise(var_limit=(0, 15)),
                                 # albu.IAAAdditiveGaussianNoise(),
                                 ], p=0.02),
-                            # albu.OneOf([
-                            #     # albu.MotionBlur(blur_limit=3),
-                            #     albu.GaussianBlur(3),
-                            #     # albu.Blur(blur_limit=3),
-                            #     ], p=0.01),
+                            albu.OneOf([
+                                # albu.MotionBlur(blur_limit=3),
+                                albu.GaussianBlur(3),
+                                # albu.Blur(blur_limit=3),
+                                ], p=0.01),
                             albu.RandomBrightnessContrast(0.15,0.15, p=0.05),
                             # albu.OneOf([
                             #     albu.CLAHE(clip_limit=2),# 
@@ -60,9 +60,9 @@ class BaseDataSet(Dataset):
 
             self.resizer = albu.Compose([
                             albu.Resize(base_size, base_size, p=1),
-                            albu.RandomScale(scale_limit=(-0.1, 0.2), p=1),
+                            albu.RandomScale(scale_limit=(-0.15, 0.25), p=1),
                             albu.PadIfNeeded(min_height=crop_size, min_width=crop_size,
-                                            value=0, mask_value=255, p=1),
+                                            value=255, mask_value=0, p=1),
                             albu.RandomCrop(height=crop_size, width=crop_size, p=1)
                             ])
         else:
