@@ -18,6 +18,7 @@ class Trainer(BaseTrainer):
         if config['trainer']['log_per_iter']: self.log_step = int(self.log_step / self.train_loader.batch_size) + 1
 
         self.num_classes = self.train_loader.dataset.num_classes
+        self.multiple_loss = config['multiple_loss']
 
         self.batch_stride = config['train_loader']['args']['batch_stride']
 
@@ -62,8 +63,8 @@ class Trainer(BaseTrainer):
                 loss += self.loss(output[1], target) * 0.4
                 output = output[0]
             else:
-                assert output.size()[2:] == target.size()[1:]
-                assert output.size()[1] == self.num_classes 
+                # assert output.size()[2:] == target.size()[1:]
+                # assert output.size()[1] == self.num_classes 
                 loss = self.loss(output, target)
 
             if isinstance(self.loss, torch.nn.DataParallel):
@@ -90,6 +91,8 @@ class Trainer(BaseTrainer):
                 self.writer.add_scalar(f'{self.wrt_mode}/loss', np.mean(show_loss), self.wrt_step)
                 show_loss.clear()
 
+            if self.multiple_loss:
+                output = output[0]
             # FOR EVAL
             seg_metrics = eval_metrics(output, target, self.num_classes)
             self._update_seg_metrics(*seg_metrics)
@@ -136,6 +139,9 @@ class Trainer(BaseTrainer):
                 if isinstance(self.loss, torch.nn.DataParallel):
                     loss = loss.mean()
                 self.total_loss.update(loss.item())
+
+                if self.multiple_loss:
+                    output = output[0]
 
                 seg_metrics = eval_metrics(output, target, self.num_classes)
                 self._update_seg_metrics(*seg_metrics)

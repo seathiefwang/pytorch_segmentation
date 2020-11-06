@@ -367,8 +367,6 @@ class MSCUnet(BaseModel):
     def get_decoder_params(self):
         return self.parameters()
 
-
-
 class ResNeStUnet(BaseModel):
     def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
         super(ResNeStUnet, self).__init__()
@@ -396,6 +394,13 @@ class ResNeStUnet(BaseModel):
             nn.Conv2d(64, num_classes, kernel_size=1)
         )
 
+        self.x2_conv = nn.Sequential(
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+        self.x3_conv = nn.Sequential(
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
 
     def _initialize_weights(self):
         for module in self.modules():
@@ -434,7 +439,11 @@ class ResNeStUnet(BaseModel):
         u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
         d = torch.cat((d1, u2, u3, u4), 1)
         x = self.final_conv(d)
-        return x
+
+        x2 = self.x2_conv(d2)
+        x3 = self.x3_conv(d3)
+
+        return [x, x2, x3]
 
     def get_backbone_params(self):
         # There is no backbone for unet, all the parameters are trained from scratch

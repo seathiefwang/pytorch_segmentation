@@ -11,7 +11,7 @@ from torchvision import transforms
 
 class RSIDataset(BaseDataSet):
 
-    def __init__(self, num_classes=14, **kwargs):
+    def __init__(self, num_classes=15, **kwargs):
         self.num_classes = num_classes
         self.palette = palette.get_voc_palette(self.num_classes)
         super(RSIDataset, self).__init__(**kwargs)

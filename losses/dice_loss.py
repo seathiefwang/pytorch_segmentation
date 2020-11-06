@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor, einsum
 from .focal_loss import FocalLoss
+from .smooth_loss import LabelSmoothCELoss
 
 def make_one_hot(labels, classes, mask=None):
     one_hot = torch.FloatTensor(labels.size()[0], classes, labels.size()[2], labels.size()[3]).zero_().to(labels.device)
@@ -125,5 +126,18 @@ class ExDiceLoss(nn.Module):
         return per_class_ds
 
 
+class SmoothCE_DiceLoss(nn.Module):
+    def __init__(self, dice_weight=0.5, ce_weight=0.5, ignore_index=255):
+        super(SmoothCE_DiceLoss, self).__init__()
+        self.dice_weight = dice_weight
+        self.ce_weight = ce_weight
+        self.dice = DiceLoss()
+        self.cross_entropy = LabelSmoothCELoss(ignore_index=ignore_index)
+    
+    def forward(self, output, target):
+        CE_loss = self.cross_entropy(output, target)
+        dice_loss = self.dice(output, target)
+        # print("ce dice :", CE_loss.item(), dice_loss.item())
+        return self.ce_weight * CE_loss + self.dice_weight * dice_loss
 
 

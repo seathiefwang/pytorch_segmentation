@@ -95,10 +95,10 @@ class DecoderSC(nn.Module):
                 module.bias.data.zero_()
 
 class DecoderAtt(nn.Module):
-    def __init__(self, in_channels, skip_channels, middle_channels, out_channels):
+    def __init__(self, in_channels, middle_channels, out_channels, spatial=False, channel=False):
         super(DecoderAtt, self).__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(in_channels + skip_channels, middle_channels, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1),
             nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
             nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),
@@ -106,43 +106,43 @@ class DecoderAtt(nn.Module):
             nn.ReLU(inplace=True),
         )
 
-        self.skip_gate = nn.Sequential(
-            nn.Conv2d(skip_channels, out_channels, kernel_size=1, padding=0, bias=True),
-            nn.BatchNorm2d(out_channels)
-        )
+        self.spatial = spatial
+        self.channel = channel
 
-        self.last_gate = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, padding=0, bias=True),
-            nn.BatchNorm2d(out_channels),
-        )
+        if self.spatial:
+            self.spatial_gate = nn.Sequential(
+                nn.Conv2d(out_channels, 1, kernel_size=1, padding=0),
+                nn.BatchNorm2d(1),
+                nn.Sigmoid()
+            )
 
-        self.psi = nn.Sequential(
-            nn.Conv2d(out_channels, 1, kernel_size=1, stride=1, padding=0, bias=True),
-            nn.BatchNorm2d(1),
-            nn.Sigmoid()
-        )
+        if self.channel:
+            self.channel_gate = nn.Sequential(
+                nn.Conv2d(out_channels, out_channels//2, kernel_size=1, padding=0),
+                nn.BatchNorm2d(out_channels//2),
+                nn.ReLU(),
+                nn.Conv2d(out_channels//2, out_channels, kernel_size=1, padding=0),
+                nn.BatchNorm2d(out_channels),
+                nn.Sigmoid()
+            )
+
         self._initialize_weights()
 
     def forward(self, *args):
         if len(args) > 1:
-            x = args[1]
-
-            skip = F.interpolate(args[0], scale_factor=2, mode='bilinear', align_corners=False)
-
-            g1 = self.skip_gate(args[0])
-            x1 = self.last_gate(skip)
-            psi = F.relu(g1 + x1)
-
-            psi = self.psi(psi)
-
-            x = psi * x
-
-            x = torch.cat([x, skip], 1)
-
+            x = torch.cat(args, 1)
         else:
             x = args[0]
-            
+        x = F.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
         x = self.block(x)
+
+        if self.spatial:
+            g1 = self.spatial_gate(x)
+            x = g1*x
+            
+        if self.channel:
+            g2 = self.channel_gate(F.avg_pool2d(x, x.size()[2:]))
+            x = g2*x
 
         return x
     

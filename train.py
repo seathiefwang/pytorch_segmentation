@@ -37,7 +37,10 @@ def main(config, resume):
     # print(f'\n{model}\n')
 
     # LOSS
-    loss = getattr(losses, config['loss'])(ignore_index = config['ignore_index'])
+    if config['multiple_loss']:
+        loss = getattr(losses, 'Criterion')(loss_type=config['loss'], ignore_index = config['ignore_index'])
+    else:
+        loss = getattr(losses, config['loss'])(ignore_index = config['ignore_index'])
 
     # TRAINING
     trainer = Trainer(

@@ -5,3 +5,5 @@ pretrained/*
 saved/*
 images/*
 submit*
+inputs/*
+outputs/*
