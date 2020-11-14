@@ -48,7 +48,7 @@
         }
     },
 
-    "multiple_loss": false,
+    "multiple_loss": true,
     "loss": "LabelSmoothCELoss",
     "ignore_index": 255,
     "lr_scheduler": {
@@ -63,12 +63,12 @@
     "trainer": {
         "epochs": 40,
         "save_dir": "saved/",
-        "save_period": 10,
+        "save_period": 1,
   
         "monitor": "max Mean_IoU",
         "early_stop": 10,
         
-        "tensorboard": true,
+        "tensorboard": false,
         "log_dir": "saved/runs",
         "log_per_iter": 100,
 
