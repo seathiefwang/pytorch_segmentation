@@ -8,7 +8,7 @@ from base import BaseTrainer
 from utils.helpers import colorize_mask
 from utils.metrics import eval_metrics, AverageMeter
 from tqdm import tqdm
-from contextlib import nullcontext
+# from contextlib import nullcontext
 
 class Trainer(BaseTrainer):
     def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, prefetch=True):
