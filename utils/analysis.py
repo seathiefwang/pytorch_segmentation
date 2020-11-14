@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 
-root = "../../rematch/"
+root = "/home/mumu/src/rsi/rematch/"
 filename = "train_all.txt"
 
 class_weight = {1:0.07, 2:0.07, 3:0.07, 4:0.02, 7:0.07, 8:0.07, 9:0.07, 10:0.07, 11:0.07, 12:0.07, 13:0.07, 14:0.07, 15:0.07, 16:0.07, 17:0.07}
@@ -15,6 +15,12 @@ with open(root + filename, 'r') as f:
         label = cv2.imread(root+'label/'+line.strip()+'.png')
 
         key = np.unique(label)
+
+        if 4 in key:
+            print(root+'label/'+line.strip()+'.png')
+            print(root+'image/'+line.strip()+'.tif')
+            
+        continue
 
         weight = 0
         for k in key:

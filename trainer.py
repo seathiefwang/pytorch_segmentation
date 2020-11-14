@@ -8,6 +8,7 @@ from base import BaseTrainer
 from utils.helpers import colorize_mask
 from utils.metrics import eval_metrics, AverageMeter
 from tqdm import tqdm
+from contextlib import nullcontext
 
 class Trainer(BaseTrainer):
     def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, prefetch=True):
@@ -53,8 +54,8 @@ class Trainer(BaseTrainer):
             data, target = data.to(self.device), target.to(self.device)
 
             # LOSS & OPTIMIZE
-            if batch_idx % self.batch_stride == 0:
-                self.optimizer.zero_grad()
+            # context = nullcontext if self.batch_stride==1 or (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size else model.no_sync
+            
             output = self.model(data)
             if self.config['arch']['type'][:3] == 'PSP':
                 assert output[0].size()[2:] == target.size()[1:]
@@ -62,9 +63,14 @@ class Trainer(BaseTrainer):
                 loss = self.loss(output[0], target)
                 loss += self.loss(output[1], target) * 0.4
                 output = output[0]
+            elif self.multiple_loss:
+                loss = self.loss(output, target)
+                output = output[0]
+                assert output.size()[2:] == target.size()[1:]
+                assert output.size()[1] == self.num_classes 
             else:
-                # assert output.size()[2:] == target.size()[1:]
-                # assert output.size()[1] == self.num_classes 
+                assert output.size()[2:] == target.size()[1:]
+                assert output.size()[1] == self.num_classes 
                 loss = self.loss(output, target)
 
             if isinstance(self.loss, torch.nn.DataParallel):
@@ -77,6 +83,7 @@ class Trainer(BaseTrainer):
 
             if (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size:
                 self.optimizer.step()
+                self.optimizer.zero_grad()
             
             self.total_loss.update(loss_item)
             show_loss.append(loss_item)
@@ -91,8 +98,6 @@ class Trainer(BaseTrainer):
                 self.writer.add_scalar(f'{self.wrt_mode}/loss', np.mean(show_loss), self.wrt_step)
                 show_loss.clear()
 
-            if self.multiple_loss:
-                output = output[0]
             # FOR EVAL
             seg_metrics = eval_metrics(output, target, self.num_classes)
             self._update_seg_metrics(*seg_metrics)

@@ -5,8 +5,8 @@ from models import resnet
 import torchvision.models as models
 import torch.nn.functional as F
 from itertools import chain
-from .resnest import resnest50
-from .decoder import DecoderNormal, DecoderSC, DecoderClass
+from .resnest import resnest50, resnest101
+from .decoder import DecoderNormal, DecoderSC, DecoderClass, DecoderAtt
 
 Decoder = DecoderClass
 
@@ -457,5 +457,98 @@ class ResNeStUnet(BaseModel):
     def freeze_bn(self):
         for module in self.modules():
             if isinstance(module, nn.BatchNorm2d): module.eval()
+
+
+class Res101Unet(BaseModel):
+    def __init__(self, num_classes, in_channels=3, freeze_bn=False, **_):
+        super(Res101Unet, self).__init__()
+        model = resnest101(True)
+        self.down1 = nn.Sequential(model.conv1, 
+                                    model.bn1,
+                                    model.relu) # 128
+        self.down2 = nn.Sequential(model.maxpool,
+                                    model.layer1) # 256
+        self.down3 = model.layer2 # 512
+        self.down4 = model.layer3 # 1024
+        self.middle_conv = nn.Sequential(
+            nn.MaxPool2d(2, 2),
+            DecoderAtt(1024, 512, 128, spatial=True)
+        )
+        self.up1 = DecoderAtt(128+1024, 512, 64, channel=True)
+        self.up2 = DecoderAtt(64+512, 256, 64, channel=True)
+        self.up3 = DecoderAtt(64+64+256, 128, 64, channel=True)
+        self.up4 = DecoderAtt(64+64+64+128, 128, 64, channel=True)
+        # self.final_conv = nn.Conv2d(64, num_classes, kernel_size=1)
+        self.final_conv = nn.Sequential(
+            nn.Conv2d(64+64+64+64, 64, kernel_size=1, padding=0),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+        self.x2_conv = nn.Sequential(
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+        self.x3_conv = nn.Sequential(
+            nn.Conv2d(64, num_classes, kernel_size=1)
+        )
+
+    def _initialize_weights(self):
+        for module in self.modules():
+            if isinstance(module, nn.Conv2d) or isinstance(module, nn.Linear):
+                nn.init.kaiming_normal_(module.weight)
+                if module.bias is not None:
+                    module.bias.data.zero_()
+            elif isinstance(module, nn.BatchNorm2d):
+                module.weight.data.fill_(1)
+                module.bias.data.zero_()
+
+    def forward(self, x):
+        x1 = self.down1(x)
+        x2 = self.down2(x1)
+        x3 = self.down3(x2)
+        x4 = self.down4(x3)
+        c = self.middle_conv(x4)
+        d4 = self.up1(x4, c)
+        d3 = self.up2(x3, d4)
+
+        # up2 interpolate
+        up1_1 = F.interpolate(d4, scale_factor=2, mode='bilinear', align_corners=False)
+        d3_x = torch.cat((d3, up1_1), 1)
+
+        d2 = self.up3(x2, d3_x)
+
+        # up3 interpolate
+        up3_1 = F.interpolate(d4, scale_factor=4, mode='bilinear', align_corners=False)
+        up3_2 = F.interpolate(d3, scale_factor=2, mode='bilinear', align_corners=False)
+        d2_x = torch.cat((d2, up3_2, up3_1), 1)
+        
+        d1 = self.up4(x1, d2_x)
+
+        u4 = F.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False)
+        u3 = F.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False)
+        u2 = F.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False)
+        d = torch.cat((d1, u2, u3, u4), 1)
+        x = self.final_conv(d)
+
+        x2 = self.x2_conv(d2)
+        x3 = self.x3_conv(d3)
+
+        return [x, x2, x3]
+
+    def get_backbone_params(self):
+        # There is no backbone for unet, all the parameters are trained from scratch
+        return chain(self.down1.parameters(), self.down2.parameters(), 
+                    self.down3.parameters(), self.down4.parameters())
+
+    def get_decoder_params(self):
+        return chain(self.up1.parameters(), self.up2.parameters(), self.up3.parameters(), self.up4.parameters(), 
+            self.middle_conv.parameters(), self.final_conv.parameters())
+
+    def freeze_bn(self):
+        for module in self.modules():
+            if isinstance(module, nn.BatchNorm2d): module.eval()
+
 
 

@@ -6,6 +6,7 @@ from __future__ import division
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from .smooth_loss import LabelSmoothCELoss
 
 
 def lovasz_grad(gt_sorted):
@@ -84,6 +85,26 @@ class CE_LovaszLoss(nn.Module):
         self.ignore_index = ignore_index
         self.only_present = only_present
         self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
+
+    def forward(self, logits, labels):
+        ce_loss = self.cross_entropy(logits, labels)
+
+        probas = F.softmax(logits, dim=1)
+        total_loss = 0
+        batch_size = logits.shape[0]
+        for prb, lbl in zip(probas, labels):
+            total_loss += lovasz_softmax_flat(prb, lbl, self.ignore_index, self.only_present)
+        lovasz_loss = total_loss / batch_size
+        # print(ce_loss.item(), lovasz_loss.item())
+        return ce_loss + lovasz_loss
+
+
+class SmoothCE_LovaszLoss(nn.Module):
+    def __init__(self, ignore_index=None, only_present=True):
+        super().__init__()
+        self.ignore_index = ignore_index
+        self.only_present = only_present
+        self.cross_entropy = LabelSmoothCELoss(ignore_index=ignore_index)
 
     def forward(self, logits, labels):
         ce_loss = self.cross_entropy(logits, labels)

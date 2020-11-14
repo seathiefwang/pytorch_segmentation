@@ -30,16 +30,20 @@ class BaseTrainer:
 
         # SETTING THE DEVICE
         self.device, availble_gpus = self._get_available_devices(self.config['n_gpu'])
+        for module in self.model.modules():
+            if isinstance(module, torch.nn.BatchNorm2d):
+                module.momentum = 0.1 / config['train_loader']['args']['batch_stride']
         if config["use_synch_bn"]:
             self.model = convert_model(self.model)
-            self.model = DataParallelWithCallback(self.model, device_ids=availble_gpus)
+            self.model = DataParallelWithCallback(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
 
+            # torch.distributed.init_process_group(backend='nccl', world_size=4, init_method='...')
+            # torch.distributed.init_process_group(backend='nccl', world_size=2, init_method='tcp://127.0.0.1:12345', rank=0)
+            # torch.distributed.init_process_group(backend='nccl', world_size=2, init_method='file:///mnt/nfs/sharedfile', rank=0)
             # self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model).to(self.device)
-            # torch.distributed.init_process_group(backend='nccl', world_size=1, init_method='tcp://127.0.0.1:12345', rank=0)
-            # # torch.distributed.init_process_group(backend='nccl', world_size=4, init_method='...')
             # self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
         else:
-            self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus)
+            self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
         self.model.to(self.device)
 
         # CONFIGS

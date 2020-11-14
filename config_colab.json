@@ -1,10 +1,10 @@
 {
-    "name": "ResNeStUnet",
+    "name": "Res101Unet",
     "n_gpu": 1,
     "use_synch_bn": false,
 
     "arch": {
-        "type": "ResNeStUnet",
+        "type": "Res101Unet",
         "args": {
             "backbone": "resnet50",
             "freeze_bn": false,
@@ -21,7 +21,7 @@
             "crop_size": 256,
             "batch_stride": 2,
             "shuffle": true,
-            "split": "train",
+            "split": "train_aug",
             "num_workers": 4
         }
     },
@@ -49,7 +49,7 @@
     },
 
     "multiple_loss": false,
-    "loss": "CE_DiceLoss",
+    "loss": "LabelSmoothCELoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
