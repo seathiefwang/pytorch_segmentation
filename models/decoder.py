@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from lambda_networks import LambdaLayer
+# from lambda_networks import LambdaLayer
 
 
 class DecoderNormal(nn.Module):
