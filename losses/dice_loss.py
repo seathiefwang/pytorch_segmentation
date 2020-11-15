@@ -11,7 +11,7 @@ def make_one_hot(labels, classes):
     target = one_hot.scatter_(1, labels.data, 1)
     return target
 
-class DiceLoss(nn.Module):
+class DiceLoss_b(nn.Module):
     def __init__(self, smooth=0, eps=1e-10, ignore_index=255):
         super().__init__()
         self.smooth = smooth
@@ -34,6 +34,37 @@ class DiceLoss(nn.Module):
             preds = preds.permute(0, 2, 3, 1)
             labels = labels[mask]
             preds = preds[mask]
+
+        preds_flat = preds.contiguous().view(-1)
+        labels_flat = labels.contiguous().view(-1)
+        intersection = (preds_flat * labels_flat).sum()
+        loss = 1 - ((2. * intersection + self.smooth) /
+                    (preds_flat.sum() + labels_flat.sum() + self.smooth + self.eps))
+        return loss
+
+class DiceLoss(nn.Module):
+    def __init__(self, smooth=0, eps=1e-10, ignore_index=255):
+        super().__init__()
+        self.smooth = smooth
+        self.eps = eps
+        self.ignore_index = ignore_index
+
+    def forward(self, preds, labels):
+        classes = preds.size()[1]
+        preds = F.softmax(preds, dim=1)
+
+        if self.ignore_index is not None:
+            mask = labels != self.ignore_index
+            preds = preds.permute(0, 2, 3, 1)
+            labels = labels[mask]
+            preds = preds[mask]
+        else:
+            preds = preds.contiguous().view(-1)
+            labels = labels.contiguous().view(-1)
+
+
+        one_hot = torch.FloatTensor(labels.size()[0], classes).zero_().to(labels.device)
+        labels = one_hot.scatter_(1, labels.data, 1)
 
         preds_flat = preds.contiguous().view(-1)
         labels_flat = labels.contiguous().view(-1)
