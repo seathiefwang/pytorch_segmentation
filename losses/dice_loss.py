@@ -62,7 +62,7 @@ class DiceLoss(nn.Module):
             preds = preds.contiguous().view(-1)
             labels = labels.contiguous().view(-1)
 
-        print(labels.shape)
+        print(labels.shape, preds.shape)
         one_hot = torch.FloatTensor(labels.size()[0], classes).zero_().to(labels.device)
         labels = one_hot.scatter_(1, labels.data, 1)
 
