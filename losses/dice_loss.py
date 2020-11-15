@@ -6,11 +6,9 @@ from torch import Tensor, einsum
 from .focal_loss import FocalLoss
 from .smooth_loss import LabelSmoothCELoss
 
-def make_one_hot(labels, classes, mask=None):
+def make_one_hot(labels, classes):
     one_hot = torch.FloatTensor(labels.size()[0], classes, labels.size()[2], labels.size()[3]).zero_().to(labels.device)
     target = one_hot.scatter_(1, labels.data, 1)
-    if mask is not None:
-        target = target[mask]
     return target
 
 class DiceLoss(nn.Module):
@@ -25,14 +23,18 @@ class DiceLoss(nn.Module):
         preds = F.softmax(preds, dim=1)
 
         if self.ignore_index is not None:
+            labels.requires_grad = False
             mask = labels != self.ignore_index
-            mask = mask.unsqueeze(1).expand(-1, preds.size(1), -1, -1)
+            labels[labels == self.ignore_index] = labels.min()
             # labels = labels[mask]
-            preds = preds[mask]
-        else:
-            mask = None
 
-        labels = make_one_hot(labels.unsqueeze(dim=1), classes=classes, mask=mask)
+        labels = make_one_hot(labels.unsqueeze(dim=1), classes=classes)
+        if self.ignore_index is not None:
+            labels = labels.permute(0, 2, 3, 1)
+            preds = preds.permute(0, 2, 3, 1)
+            labels = labels[mask]
+            preds = preds[mask]
+
         preds_flat = preds.contiguous().view(-1)
         labels_flat = labels.contiguous().view(-1)
         intersection = (preds_flat * labels_flat).sum()

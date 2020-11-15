@@ -14,8 +14,12 @@ class Criterion(nn.Module):
         super().__init__()
         if loss_type == 'MSE':
             self.criterion = nn.CrossEntropyLoss(**kwargs)
+        elif loss_type == 'DiceLoss':
+            self.criterion = DiceLoss(**kwargs)
         elif loss_type == 'CE_DiceLoss':
             self.criterion = CE_DiceLoss(**kwargs)
+        elif loss_type == 'GeneralizedDiceLoss':
+            self.criterion = GeneralizedDiceLoss(**kwargs)
         elif loss_type == 'LabelSmoothCELoss':
             self.criterion = LabelSmoothCELoss(**kwargs)
         elif loss_type == 'SmoothCE_DiceLoss':
