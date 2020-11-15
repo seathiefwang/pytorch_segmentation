@@ -131,7 +131,7 @@ class SmoothCE_DiceLoss(nn.Module):
         super(SmoothCE_DiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
-        self.dice = DiceLoss()
+        self.dice = DiceLoss(ignore_index=255)
         self.cross_entropy = LabelSmoothCELoss(ignore_index=ignore_index)
     
     def forward(self, output, target):

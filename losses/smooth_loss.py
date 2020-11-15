@@ -13,11 +13,12 @@ class LabelSmoothCELoss(nn.Module):
         super(LabelSmoothCELoss, self).__init__()
         self.epsilon = epsilon
         self.reduction = reduction
+        self.ignore_index = ignore_index
 
     def forward(self, preds, labels):
         n = preds.size()[1]
         log_preds = F.log_softmax(preds, dim=1)
         loss = reduce_loss(-log_preds.sum(dim=1), self.reduction)
-        nll = F.nll_loss(log_preds, labels, reduction=self.reduction)
+        nll = F.nll_loss(log_preds, labels, reduction=self.reduction, ignore_index=self.ignore_index)
         return linear_combination(loss/n, nll, self.epsilon)
 

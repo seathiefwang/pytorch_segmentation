@@ -75,7 +75,6 @@ class Trainer(BaseTrainer):
 
             if isinstance(self.loss, torch.nn.DataParallel):
                 loss = loss.mean()
-            
             loss_item = loss.item()
             loss = loss / self.batch_stride
 

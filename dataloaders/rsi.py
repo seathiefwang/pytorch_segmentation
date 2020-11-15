@@ -42,6 +42,7 @@ class RSIDataset(BaseDataSet):
             seg_labels[label == matches[i]] = i
         
         seg_labels[label == 0] = 0
+        seg_labels[label == 255] = 255
         if self.num_classes == 14:
             seg_labels[label == 4] = 0
 

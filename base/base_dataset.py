@@ -34,7 +34,7 @@ class BaseDataSet(Dataset):
             self.affine_augmenter = albu.Compose([
                             albu.Flip(p=0.3),
                             albu.RandomRotate90(p=0.3),
-                            albu.Rotate(limit=45, value=0, mask_value=0, p=0.001)
+                            albu.Rotate(limit=45, value=0, mask_value=0, border_mode=cv2.BORDER_CONSTANT, p=0.001)
                             ])
 
             self.image_augmenter = albu.Compose([
@@ -62,7 +62,7 @@ class BaseDataSet(Dataset):
                             albu.Resize(base_size, base_size, p=1),
                             albu.RandomScale(scale_limit=(-0.2, 0.25), p=1),
                             albu.PadIfNeeded(min_height=crop_size, min_width=crop_size,
-                                            value=0, mask_value=255, p=1),
+                                            value=0, mask_value=255, border_mode=cv2.BORDER_CONSTANT, p=1),
                             albu.RandomCrop(height=crop_size, width=crop_size, p=1)
                             ])
         else:
