@@ -10,9 +10,9 @@ from .smooth_loss import LabelSmoothCELoss
 
 
 class Criterion(nn.Module):
-    def __init__(self, loss_type='MSE', **kwargs):
+    def __init__(self, loss_type='CrossEntropyLoss', **kwargs):
         super().__init__()
-        if loss_type == 'MSE':
+        if loss_type == 'CrossEntropyLoss':
             self.criterion = nn.CrossEntropyLoss(**kwargs)
         elif loss_type == 'DiceLoss':
             self.criterion = DiceLoss(**kwargs)

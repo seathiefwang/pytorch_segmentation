@@ -46,6 +46,7 @@ class DiceLoss(nn.Module):
     def __init__(self, smooth=0, eps=1e-10, ignore_index=255):
         super().__init__()
         self.smooth = smooth
+        self.label_smooth = 0.1
         self.eps = eps
         self.ignore_index = ignore_index
 
@@ -63,8 +64,12 @@ class DiceLoss(nn.Module):
             labels = labels.contiguous().view(-1)
 
         labels = labels.unsqueeze(dim=1)
-        one_hot = torch.FloatTensor(labels.size()[0], classes).zero_().to(labels.device)
+        # one_hot = torch.FloatTensor(labels.size()[0], classes).zero_().to(labels.device)
+        one_hot = torch.zeros(labels.size()[0], classes, device=labels.device)
         labels = one_hot.scatter_(1, labels.data, 1)
+
+        # label smoothing 
+        # labels = labels * (1 - self.self.label_smooth) + (self.self.label_smooth / classes)
 
         preds_flat = preds.contiguous().view(-1)
         labels_flat = labels.contiguous().view(-1)
@@ -123,7 +128,7 @@ class CE_DiceLoss(nn.Module):
         super(CE_DiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
-        self.dice = DiceLoss()
+        self.dice = DiceLoss(ignore_index=ignore_index)
         self.cross_entropy = nn.CrossEntropyLoss(ignore_index=ignore_index)
     
     def forward(self, output, target):
@@ -164,7 +169,7 @@ class SmoothCE_DiceLoss(nn.Module):
         super(SmoothCE_DiceLoss, self).__init__()
         self.dice_weight = dice_weight
         self.ce_weight = ce_weight
-        self.dice = DiceLoss(ignore_index=255)
+        self.dice = DiceLoss(ignore_index=ignore_index)
         self.cross_entropy = LabelSmoothCELoss(ignore_index=ignore_index)
     
     def forward(self, output, target):

@@ -11,7 +11,7 @@ from torchvision import transforms
 
 class RSIDataset(BaseDataSet):
 
-    def __init__(self, num_classes=15, **kwargs):
+    def __init__(self, num_classes=14, **kwargs):
         self.num_classes = num_classes
         self.palette = palette.get_voc_palette(self.num_classes)
         super(RSIDataset, self).__init__(**kwargs)
@@ -44,7 +44,7 @@ class RSIDataset(BaseDataSet):
         seg_labels[label == 0] = 0
         seg_labels[label == 255] = 255
         if self.num_classes == 14:
-            seg_labels[label == 4] = 0
+            seg_labels[label == 4] = 255
 
         return seg_labels
 
@@ -64,11 +64,18 @@ class RSIDataset(BaseDataSet):
             weights = np.load(save_path)
             return weights
 
-        class_weight = {1:0.07, 2:0.07, 3:0.07, 4:0.02, 7:0.07, 8:0.06, 9:0.07, 10:0.07, 11:0.07, 12:0.07, 13:0.07, 14:0.07, 15:0.07, 16:0.07, 17:0.07}
+        # class_weight = {1:0.065, 2:0.07, 3:0.07, 4:0.01, 7:0.05, 8:0.01, 9:0.07, 10:0.04, 11:0.07, 12:0.04, 13:0.07, 14:0.065, 15:0.045, 16:0.025, 17:0.07}
+        class_weight = {1:0.065, 2:0.07, 3:0.07, 4:0, 7:0.05, 8:0.016, 9:0.07, 10:0.04, 11:0.07, 12:0.04, 13:0.07, 14:0.065, 15:0.045, 16:0.03, 17:0.07}
+
         # class_sum = {2: 1543114305, 7: 1311472725, 11: 2476695927, 13: 3064837353, 17: 473091372, 3: 2371671666, 9: 4478857437, 16: 221682972, 10: 247614603, 14: 1439428722, 8: 52628364, 12: 470929422, 1: 541517850, 15: 966983106, 4: 274176}
+        class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 14}
         # class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 1261}
         # class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 2152}
-        class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 3750} #1598
+        # class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 3750} #1598
+
+
+        class_weight = {1:0.065, 2:0.07, 3:0.07, 4:0, 7:0.06, 8:0.03, 9:0.07, 10:0.04, 11:0.07, 12:0.05, 13:0.07, 14:0.07, 15:0.05, 16:0.03, 17:0.07}
+        class_num = {1: 42599, 2: 85115, 3: 78318, 9: 48372, 10: 12171, 11: 81375, 13: 78563, 14: 53880, 17: 70632, 15: 24629, 16: 8359, 12: 25642, 7: 46717, 8: 5452, 4: 14, 255: 29379}
 
         weights = []
         for image_id in self.files:
@@ -76,13 +83,14 @@ class RSIDataset(BaseDataSet):
             label = cv2.imread(label_path)
             key = np.unique(label)
 
-            w = 0
+            wei = 0
             for k in key:
                 if k == 0 or k == 255: continue
                 # mask = label == k
                 # label_n = np.sum(mask)
-                w += class_weight[k] * (1 / class_num[k])
-            weights.append(w)
+                w = class_weight[k] * (10000 / class_num[k])
+                wei = w if w > wei else wei
+            weights.append(wei)
 
         weights = np.asarray(weights)
         np.save(save_path, weights)
@@ -138,13 +146,14 @@ class RSIFastDataset(BaseDataSet):
         return image, label, image_id
 
 class RSI(BaseDataLoader):
-    def __init__(self, data_dir, batch_size, split, crop_size=None, base_size=None, scale=True, num_workers=1, val=False,
+    def __init__(self, data_dir, batch_size, split, crop_size=None, base_size=None, num_classes=14, num_workers=1, val=False,
                     shuffle=False, val_split=None, return_id=False, **kwargs):
         
         self.MEAN = [0.45734706, 0.43338275, 0.40058118]
         self.STD = [0.23965294, 0.23532275, 0.2398498]
 
         kwargs = {
+            'num_classes': num_classes,
             'root': data_dir,
             'split': split,
             'mean': self.MEAN,
@@ -155,14 +164,17 @@ class RSI(BaseDataLoader):
             'val': val
         }
     
-        if split in ["train_fast", "trainval_fast", "val_fast", "test_fast"]:
-            self.dataset = RSIFastDataset(**kwargs)
-        elif split in ["train", "train_all", "train_aug", "val", "test"]:
-            self.dataset = RSIDataset(**kwargs)
-        else: raise ValueError(f"Invalid split name {split}")
+        # if split in ["train_fast", "trainval_fast", "val_fast", "test_fast"]:
+        #     self.dataset = RSIFastDataset(**kwargs)
+        # elif split in ["train", "train_all", "train_aug", "val", "test"]:
+        #     self.dataset = RSIDataset(**kwargs)
+        # else: raise ValueError(f"Invalid split name {split}")
+
+        self.dataset = RSIDataset(**kwargs)
 
         if 'train' in split:
             weights = self.dataset.get_weights()
+            # weights = None
         else:
             weights = None
         super(RSI, self).__init__(self.dataset, batch_size, shuffle, num_workers, val_split, weights)

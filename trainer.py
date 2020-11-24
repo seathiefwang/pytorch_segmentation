@@ -8,7 +8,8 @@ from base import BaseTrainer
 from utils.helpers import colorize_mask
 from utils.metrics import eval_metrics, AverageMeter
 from tqdm import tqdm
-# from contextlib import nullcontext
+from contextlib import nullcontext
+from utils.sync_batchnorm import batch_norm_no_syn
 
 class Trainer(BaseTrainer):
     def __init__(self, model, loss, resume, config, train_loader, val_loader=None, train_logger=None, prefetch=True):
@@ -47,38 +48,40 @@ class Trainer(BaseTrainer):
         # tic = time.time()
         show_loss = []
         self._reset_metrics()
-        tbar = tqdm(self.train_loader, ncols=130)
+        self.optimizer.zero_grad()
+        tbar = tqdm(self.train_loader, ncols=100)
         loader_size = len(self.train_loader)
         for batch_idx, (data, target) in enumerate(tbar):
             # self.data_time.update(time.time() - tic)
             data, target = data.to(self.device), target.to(self.device)
 
             # LOSS & OPTIMIZE
-            # context = nullcontext if self.batch_stride==1 or (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size else model.no_sync
+            my_context = nullcontext if (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size else batch_norm_no_syn
             
-            output = self.model(data)
-            if self.config['arch']['type'][:3] == 'PSP':
-                assert output[0].size()[2:] == target.size()[1:]
-                assert output[0].size()[1] == self.num_classes 
-                loss = self.loss(output[0], target)
-                loss += self.loss(output[1], target) * 0.4
-                output = output[0]
-            elif self.multiple_loss:
-                loss = self.loss(output, target)
-                output = output[0]
-                assert output.size()[2:] == target.size()[1:]
-                assert output.size()[1] == self.num_classes 
-            else:
-                assert output.size()[2:] == target.size()[1:]
-                assert output.size()[1] == self.num_classes 
-                loss = self.loss(output, target)
+            with my_context():
+                output = self.model(data)
+                if self.config['arch']['type'][:3] == 'PSP':
+                    assert output[0].size()[2:] == target.size()[1:]
+                    assert output[0].size()[1] == self.num_classes 
+                    loss = self.loss(output[0], target)
+                    loss += self.loss(output[1], target) * 0.4
+                    output = output[0]
+                elif self.multiple_loss:
+                    loss = self.loss(output, target)
+                    output = output[0]
+                    assert output.size()[2:] == target.size()[1:]
+                    assert output.size()[1] == self.num_classes 
+                else:
+                    assert output.size()[2:] == target.size()[1:]
+                    assert output.size()[1] == self.num_classes 
+                    loss = self.loss(output, target)
 
-            if isinstance(self.loss, torch.nn.DataParallel):
-                loss = loss.mean()
-            loss_item = loss.item()
-            loss = loss / self.batch_stride
+                if isinstance(self.loss, torch.nn.DataParallel):
+                    loss = loss.mean()
+                loss_item = loss.item()
+                loss = loss / self.batch_stride
 
-            loss.backward()
+                loss.backward()
 
             if (batch_idx+1) % self.batch_stride == 0 or batch_idx+1 == loader_size:
                 self.optimizer.step()
@@ -103,8 +106,8 @@ class Trainer(BaseTrainer):
             pixAcc, mIoU, _ = self._get_seg_metrics().values()
             
             # PRINT INFO
-            tbar.set_description('TRAIN ({}) | Loss: {:.3f} | Acc {:.2f} mIoU {:.2f} |'.format(
-                                                epoch, self.total_loss.average, 
+            tbar.set_description('Loss: {:.3f} | Acc {:.2f} mIoU {:.2f} |'.format(
+                                                self.total_loss.average, 
                                                 pixAcc, mIoU))
 
         # METRICS TO TENSORBOARD
@@ -126,13 +129,13 @@ class Trainer(BaseTrainer):
         if self.val_loader is None:
             self.logger.warning('Not data loader was passed for the validation step, No validation is performed !')
             return {}
-        self.logger.info('\n###### EVALUATION ######')
+        self.logger.info(f'\n###### EVALUATION ({epoch}) ######')
 
         self.model.eval()
         self.wrt_mode = 'val'
 
         self._reset_metrics()
-        tbar = tqdm(self.val_loader, ncols=130)
+        tbar = tqdm(self.val_loader, ncols=100)
         with torch.no_grad():
             val_visual = []
             for batch_idx, (data, target) in enumerate(tbar):
@@ -158,7 +161,7 @@ class Trainer(BaseTrainer):
 
                 # PRINT INFO
                 pixAcc, mIoU, _ = self._get_seg_metrics().values()
-                tbar.set_description('EVAL ({}) | Loss: {:.3f}, PixelAcc: {:.2f}, Mean IoU: {:.2f} |'.format( epoch,
+                tbar.set_description('Loss: {:.3f}, Acc: {:.2f}, mIoU: {:.2f} |'.format(
                                                 self.total_loss.average,
                                                 pixAcc, mIoU))
 

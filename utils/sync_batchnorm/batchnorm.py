@@ -92,9 +92,11 @@ class _SynchronizedBatchNorm(_BatchNorm):
         # Reshape it.
         return output.view(input_shape)
 
-    def __data_parallel_replicate__(self, ctx, copy_id):
-        self._is_parallel = True
+    def __data_parallel_replicate__(self, ctx, copy_id, is_parallel):
+        self._is_parallel = is_parallel
         self._parallel_id = copy_id
+
+        if not is_parallel: return
 
         # parallel_id == 0 means master device.
         if self._parallel_id == 0:

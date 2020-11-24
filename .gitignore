@@ -7,3 +7,4 @@ images/*
 submit*
 inputs/*
 outputs/*
+eval_label/*

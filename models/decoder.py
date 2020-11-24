@@ -98,10 +98,10 @@ class DecoderAtt(nn.Module):
     def __init__(self, in_channels, middle_channels, out_channels, spatial=False, channel=False):
         super(DecoderAtt, self).__init__()
         self.block = nn.Sequential(
-            nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels, middle_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(middle_channels),
             nn.ReLU(inplace=True),
-            nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1),
+            nn.Conv2d(middle_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
         )
@@ -111,17 +111,17 @@ class DecoderAtt(nn.Module):
 
         if self.spatial:
             self.spatial_gate = nn.Sequential(
-                nn.Conv2d(out_channels, 1, kernel_size=1, padding=0),
+                nn.Conv2d(out_channels, 1, kernel_size=1, padding=0, bias=False),
                 nn.BatchNorm2d(1),
                 nn.Sigmoid()
             )
 
         if self.channel:
             self.channel_gate = nn.Sequential(
-                nn.Conv2d(out_channels, out_channels//2, kernel_size=1, padding=0),
+                nn.Conv2d(out_channels, out_channels//2, kernel_size=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_channels//2),
-                nn.ReLU(),
-                nn.Conv2d(out_channels//2, out_channels, kernel_size=1, padding=0),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(out_channels//2, out_channels, kernel_size=1, padding=0, bias=False),
                 nn.BatchNorm2d(out_channels),
                 nn.Sigmoid()
             )

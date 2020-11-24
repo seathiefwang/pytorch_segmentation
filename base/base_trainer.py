@@ -42,8 +42,9 @@ class BaseTrainer:
             # torch.distributed.init_process_group(backend='nccl', world_size=2, init_method='file:///mnt/nfs/sharedfile', rank=0)
             # self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model).to(self.device)
             # self.model = torch.nn.parallel.DistributedDataParallel(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
-        else:
+        elif len(availble_gpus) > 0:
             self.model = torch.nn.DataParallel(self.model, device_ids=availble_gpus, output_device=availble_gpus[0])
+
         self.model.to(self.device)
 
         # CONFIGS
@@ -177,7 +178,7 @@ class BaseTrainer:
 
         if checkpoint['config']['arch'] != self.config['arch']:
             self.logger.warning({'Warning! Current model is not the same as the one in the checkpoint'})
-        self.model.load_state_dict(checkpoint['state_dict'])
+        self.model.load_state_dict(checkpoint['state_dict'], strict=True)
 
         if checkpoint['config']['optimizer']['type'] != self.config['optimizer']['type']:
             self.logger.warning({'Warning! Current optimizer is not the same as the one in the checkpoint'})

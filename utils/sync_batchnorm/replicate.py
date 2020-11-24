@@ -9,6 +9,7 @@
 # Distributed under MIT License.
 
 import functools
+import contextlib
 
 from torch.nn.parallel.data_parallel import DataParallel
 
@@ -19,6 +20,7 @@ __all__ = [
     'patch_replication_callback'
 ]
 
+is_parallel = True
 
 class CallbackContext(object):
     pass
@@ -37,6 +39,7 @@ def execute_replication_callbacks(modules):
     We guarantee that the callback on the master copy (the first copy) will be called ahead of calling the callback
     of any slave copies.
     """
+    global is_parallel
     master_copy = modules[0]
     nr_modules = len(list(master_copy.modules()))
     ctxs = [CallbackContext() for _ in range(nr_modules)]
@@ -44,7 +47,7 @@ def execute_replication_callbacks(modules):
     for i, module in enumerate(modules):
         for j, m in enumerate(module.modules()):
             if hasattr(m, '__data_parallel_replicate__'):
-                m.__data_parallel_replicate__(ctxs[j], i)
+                m.__data_parallel_replicate__(ctxs[j], i, is_parallel)
 
 
 class DataParallelWithCallback(DataParallel):
@@ -92,3 +95,13 @@ def patch_replication_callback(data_parallel):
         return modules
 
     data_parallel.replicate = new_replicate
+
+
+@contextlib.contextmanager
+def batch_norm_no_syn():
+    global is_parallel
+    is_parallel = False
+
+    yield
+
+    is_parallel = True

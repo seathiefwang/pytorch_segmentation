@@ -1,7 +1,7 @@
 {
     "name": "Res101Unet",
     "n_gpu": 2,
-    "use_synch_bn": false,
+    "use_synch_bn": true,
 
     "arch": {
         "type": "Res101Unet",
@@ -16,12 +16,13 @@
         "type": "RSI",
         "args":{
             "data_dir": "/home/mumu/src/rsi",
+            "num_classes": 14,
             "batch_size": 18,
             "base_size": 256,
             "crop_size": 256,
-            "batch_stride": 2,
+            "batch_stride": 40,
             "shuffle": true,
-            "split": "train_aug",
+            "split": "train_pseudo",
             "num_workers": 8
         }
     },
@@ -42,20 +43,20 @@
         "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.01,
+            "lr": 0.03,
             "weight_decay": 1e-4,
             "momentum": 0.9
         }
     },
 
     "multiple_loss": true,
-    "loss": "LabelSmoothCELoss",
+    "loss": "CE_DiceLoss",
     "ignore_index": 255,
     "lr_scheduler": {
         "type": "CosineWithRestarts",
         "args": {
             "t_max": 10,
-            "eta_min": 1e-5,
+            "eta_min": 1e-4,
             "factor": 1
         }
     },
@@ -70,9 +71,9 @@
         
         "tensorboard": true,
         "log_dir": "saved/runs",
-        "log_per_iter": 200,
+        "log_per_iter": 300,
 
         "val": true,
-        "val_per_epochs": 5
+        "val_per_epochs": 10
     }
 }
