@@ -20,7 +20,7 @@
             "batch_size": 18,
             "base_size": 256,
             "crop_size": 256,
-            "batch_stride": 40,
+            "batch_stride": 4,
             "shuffle": true,
             "split": "train_pseudo",
             "num_workers": 8
@@ -43,7 +43,7 @@
         "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.03,
+            "lr": 0.01,
             "weight_decay": 1e-4,
             "momentum": 0.9
         }
@@ -56,13 +56,13 @@
         "type": "CosineWithRestarts",
         "args": {
             "t_max": 10,
-            "eta_min": 1e-4,
+            "eta_min": 1e-5,
             "factor": 1
         }
     },
 
     "trainer": {
-        "epochs": 120,
+        "epochs": 80,
         "save_dir": "saved/",
         "save_period": 1,
   

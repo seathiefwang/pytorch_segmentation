@@ -17,7 +17,7 @@ class RSIDataset(BaseDataSet):
         super(RSIDataset, self).__init__(**kwargs)
 
     def _set_files(self):
-        self.root = os.path.join(self.root, 'rematch')
+        self.root = os.path.join(self.root, 'train')
         self.image_dir = os.path.join(self.root, 'image')
         self.label_dir = os.path.join(self.root, 'label')
 
