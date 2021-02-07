@@ -17,7 +17,7 @@ import models
 from utils.helpers import colorize_mask
 from collections import OrderedDict
 
-matches = [800, 100, 200, 300, 400, 500, 600, 700]
+matches = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 def pad_image(img, target_size):
     rows_to_pad = max(target_size[0] - img.shape[2], 0)

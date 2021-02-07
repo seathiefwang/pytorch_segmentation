@@ -2,8 +2,8 @@ import os
 import cv2
 import numpy as np
 
-root = "/home/mumu/src/rsi/rematch/"
-filename = "train_pseudo.txt"
+root = "/mnt/fmdata/rsi_data/suichang/train/"
+filename = "train.txt"
 
 class_weight = {1:0.07, 2:0.07, 3:0.07, 4:0.02, 7:0.07, 8:0.07, 9:0.07, 10:0.07, 11:0.07, 12:0.07, 13:0.07, 14:0.07, 15:0.07, 16:0.07, 17:0.07}
 
@@ -33,7 +33,7 @@ class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 4
 
 
 
-src_dir = "../../rematch/label/"
+src_dir = "/mnt/fmdata/rsi_data/suichang/train/label/"
 pixel_num = {}
 class_num = {}
 

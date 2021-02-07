@@ -11,7 +11,7 @@ from torchvision import transforms
 
 class RSIDataset(BaseDataSet):
 
-    def __init__(self, num_classes=14, **kwargs):
+    def __init__(self, num_classes=10, **kwargs):
         self.num_classes = num_classes
         self.palette = palette.get_voc_palette(self.num_classes)
         super(RSIDataset, self).__init__(**kwargs)
@@ -27,7 +27,9 @@ class RSIDataset(BaseDataSet):
     def _get_label(self, label):
         # 类别对应
         if self.num_classes == 8:
-            matches = [800, 100, 200, 300, 400, 500, 600, 700]
+            matches = [1, 2, 4, 5, 6, 7, 8, 9]
+        elif self.num_classes == 10:
+            matches = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
         elif self.num_classes == 17:
             matches = [17, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
         elif self.num_classes == 15:
@@ -41,8 +43,12 @@ class RSIDataset(BaseDataSet):
         for i in range(self.num_classes):
             seg_labels[label == matches[i]] = i
         
-        seg_labels[label == 0] = 0
-        seg_labels[label == 255] = 255
+        if self.num_classes == 8:
+            seg_labels[label == 3] = 255
+            seg_labels[label == 10] = 255
+
+        # seg_labels[label == 0] = 0
+        # seg_labels[label == 255] = 255
         if self.num_classes == 14:
             seg_labels[label == 4] = 255
 
@@ -52,7 +58,7 @@ class RSIDataset(BaseDataSet):
         image_id = self.files[index]
         image_path = os.path.join(self.image_dir, image_id + '.tif')
         label_path = os.path.join(self.label_dir, image_id + '.png')
-        image = np.asarray(Image.open(image_path))
+        image = np.asarray(Image.open(image_path))[:,:,:3]
         label = np.asarray(Image.open(label_path), dtype=np.int32)
         label = self._get_label(label)
         # image_id = self.files[index].split("/")[-1].split(".")[0]
@@ -74,8 +80,12 @@ class RSIDataset(BaseDataSet):
         # class_num = {2: 73904, 7: 28175, 11: 75679, 13: 73239, 17: 65397, 3: 64540, 9: 47947, 16: 7874, 10: 12158, 14: 44790, 8: 3101, 12: 15291, 1: 32271, 15: 20300, 4: 3750} #1598
 
 
-        class_weight = {1:0.065, 2:0.07, 3:0.07, 4:0, 7:0.06, 8:0.03, 9:0.07, 10:0.04, 11:0.07, 12:0.05, 13:0.07, 14:0.07, 15:0.05, 16:0.03, 17:0.07}
-        class_num = {1: 42599, 2: 85115, 3: 78318, 9: 48372, 10: 12171, 11: 81375, 13: 78563, 14: 53880, 17: 70632, 15: 24629, 16: 8359, 12: 25642, 7: 46717, 8: 5452, 4: 14, 255: 29379}
+        # class_weight = {1:0.065, 2:0.07, 3:0.07, 4:0, 7:0.06, 8:0.03, 9:0.07, 10:0.04, 11:0.07, 12:0.05, 13:0.07, 14:0.07, 15:0.05, 16:0.03, 17:0.07}
+        # class_num = {1: 42599, 2: 85115, 3: 78318, 9: 48372, 10: 12171, 11: 81375, 13: 78563, 14: 53880, 17: 70632, 15: 24629, 16: 8359, 12: 25642, 7: 46717, 8: 5452, 4: 14, 255: 29379}
+
+        class_weight = {1:1, 2:1, 3:0.5, 4:0.5, 5:0.5, 6:0.5, 7:0.5, 8:0.5, 9:0.5, 10:0.2}
+        class_num = {1: 14869, 2: 15667, 4: 13296, 6: 8726, 9: 9124, 3: 3765, 5: 1970, 7: 1295, 8: 4690, 10: 673}
+
 
         weights = []
         for image_id in self.files:

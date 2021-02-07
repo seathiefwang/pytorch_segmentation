@@ -15,14 +15,14 @@
     "train_loader": {
         "type": "RSI",
         "args":{
-            "data_dir": "/home/mumu/src/rsi",
-            "num_classes": 14,
+            "data_dir": "/mnt/fmdata/rsi_data/suichang",
+            "num_classes": 10,
             "batch_size": 18,
             "base_size": 256,
             "crop_size": 256,
-            "batch_stride": 4,
+            "batch_stride": 1,
             "shuffle": true,
-            "split": "train_pseudo",
+            "split": "train",
             "num_workers": 8
         }
     },
@@ -30,7 +30,7 @@
     "val_loader": {
         "type": "RSI",
         "args":{
-            "data_dir": "/home/mumu/src/rsi",
+            "data_dir": "/mnt/fmdata/rsi_data/suichang",
             "batch_size": 8,
             "crop_size": 256,
             "val": true,
@@ -43,7 +43,7 @@
         "type": "SGD",
         "differential_lr": false,
         "args":{
-            "lr": 0.01,
+            "lr": 0.02,
             "weight_decay": 1e-4,
             "momentum": 0.9
         }
@@ -62,18 +62,18 @@
     },
 
     "trainer": {
-        "epochs": 80,
+        "epochs": 120,
         "save_dir": "saved/",
-        "save_period": 1,
+        "save_period": 5,
   
         "monitor": "max Mean_IoU",
-        "early_stop": 10,
+        "early_stop": 20,
         
         "tensorboard": true,
         "log_dir": "saved/runs",
         "log_per_iter": 300,
 
         "val": true,
-        "val_per_epochs": 10
+        "val_per_epochs": 5
     }
 }

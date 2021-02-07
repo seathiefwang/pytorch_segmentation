@@ -32,37 +32,37 @@ class BaseDataSet(Dataset):
 
         if not self.val:
             self.affine_augmenter = albu.Compose([
-                            albu.Flip(p=0.3),
-                            albu.RandomRotate90(p=0.3),
-                            albu.Rotate(limit=45, value=0, mask_value=0, border_mode=cv2.BORDER_CONSTANT, p=0.005)
+                            albu.Flip(p=0.5),
+                            albu.RandomRotate90(p=0.5),
+                            albu.Rotate(limit=45, value=0, mask_value=255, border_mode=cv2.BORDER_CONSTANT, p=0.005)
                             ])
 
             self.image_augmenter = albu.Compose([
                             albu.OneOf([
                                 albu.GaussNoise(var_limit=(0, 15)),
                                 # albu.IAAAdditiveGaussianNoise(),
-                                ], p=0.01),
+                                ], p=0.0001),
                             albu.OneOf([
-                                # albu.MotionBlur(blur_limit=3),
+                                albu.MotionBlur(blur_limit=3),
                                 albu.GaussianBlur(3),
                                 # albu.Blur(blur_limit=3),
-                                ], p=0.01),
-                            albu.RandomBrightnessContrast(0.15,0.15, p=0.05),
+                                ], p=0.0001),
+                            albu.RandomBrightnessContrast(0.15,0.15, p=0.005),
                             albu.OneOf([
                                 albu.CLAHE(clip_limit=2),# 
                                 albu.IAASharpen(),# 锐化
                                 # albu.IAAEmboss(),# 浮雕
                                 albu.RandomGamma(),
-                                ], p=0.001),
-                            albu.HueSaturationValue(hue_shift_limit=0, sat_shift_limit=10, val_shift_limit=20,p=0.02),
-                            albu.JpegCompression(90, 100, p=0.001)
+                                ], p=0),
+                            albu.HueSaturationValue(hue_shift_limit=0, sat_shift_limit=10, val_shift_limit=20,p=0.0002),
+                            albu.JpegCompression(90, 100, p=0.0001)
                             ])
 
             self.resizer = albu.Compose([
                             albu.Resize(base_size, base_size, p=1),
-                            albu.RandomScale(scale_limit=(-0.2, 0.25), p=0.05),
+                            albu.RandomScale(scale_limit=(-0.2, 0.25), p=0.005),
                             albu.PadIfNeeded(min_height=crop_size, min_width=crop_size,
-                                            value=0, mask_value=0, border_mode=cv2.BORDER_CONSTANT, p=1),
+                                            value=0, mask_value=255, border_mode=cv2.BORDER_CONSTANT, p=1),
                             albu.RandomCrop(height=crop_size, width=crop_size, p=1)
                             ])
         else:
